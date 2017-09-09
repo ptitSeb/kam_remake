@@ -37,7 +37,7 @@ type
     class var
       TotalBinds, TotalSkipBinds, Bind0, SkipBind0: Cardinal;
     class var
-      Bind0Src: array [0..12] of TBind0Stat;
+      Bind0Src: array [0..13] of TBind0Stat;
 
     constructor Create(aRenderControl: TKMRenderControl; ScreenX,ScreenY: Integer; aVSync: Boolean);
     destructor Destroy; override;
@@ -139,8 +139,11 @@ begin
       Inc(Bind0);
       if aSrcI <> -1 then
       begin
-        Bind0Src[aSrcI].From := aSrc;
-        Bind0Src[aSrcI].Cnt := Bind0Src[aSrcI].Cnt + 1;
+        Bind0Src[aSrcI+1].From := aSrc;
+        Bind0Src[aSrcI+1].Cnt := Bind0Src[aSrcI].Cnt + 1;
+      end else begin
+        Bind0Src[0].From := 'AUX';
+        Bind0Src[0].Cnt := Bind0Src[0].Cnt + 1;
       end;
     end;
     Inc(TotalBinds);
@@ -331,6 +334,8 @@ begin
 
   //There will be no change to image anyway
   if aValue = 0 then Exit;
+
+  TRender.BindTexture(0);
 
   glLoadIdentity;
   glBlendFunc(GL_DST_COLOR, GL_ONE);

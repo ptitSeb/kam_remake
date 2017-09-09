@@ -969,7 +969,7 @@ begin
     glTexCoord2f(UVb.x, UVb.y); glVertex2f(pX  , pY-1 - gTerrain.Land[pY  ,pX+1].Height/CELL_HEIGHT_DIV+0.10);
   glEnd;
 
-  TRender.BindTexture(0, 8, 'rMarkup');
+  //TRender.BindTexture(0, 8, 'rMarkup');
 end;
 
 

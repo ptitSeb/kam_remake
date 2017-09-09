@@ -478,6 +478,8 @@ procedure TRenderPool.PaintRallyPoint(aHouseEntrance, aRallyPoint: TKMPoint; aCo
 
 var P: TKMPointF;
 begin
+  TRender.BindTexture(0);
+
   P := KMPointF(aRallyPoint.X - 0.5, aRallyPoint.Y - 0.5);
   if not aDoImmediateRender then
     case aPass of
@@ -1325,6 +1327,7 @@ end;
 //aInset - Internal adjustment, to render wire "inside" tile
 procedure TRenderPool.RenderWireTile(P: TKMPoint; Col: TColor4; aInset: Single = 0.0);
 begin
+  TRender.BindTexture(0);
   if not gTerrain.TileInMapCoords(P.X, P.Y) then exit;
   glColor4ubv(@Col);
   glBegin(GL_LINE_LOOP);
@@ -1439,6 +1442,8 @@ var
   Rad, Slope: Byte;
 begin
   if gGameCursor.Cell.Y * gGameCursor.Cell.X = 0 then Exit; // Caused a rare crash
+
+  TRender.BindTexture(0);
 
   if gGame.IsMapEditor then
     gGame.MapEditor.Paint(plCursors, KMRect(0,0,0,0));
