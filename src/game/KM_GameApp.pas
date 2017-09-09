@@ -740,7 +740,7 @@ begin
 //      fOnCursorUpdate(5, 'Object: ' + IntToStr(gGameCursor.ObjectUID));
   if Assigned(fOnCursorUpdate) then
   begin
-    Str := 'TotalBind0: ' + IntToStr(TRender.Bind0) + '  ';
+    Str := 'TotalBind0: ' + IntToStr(TRender.Bind0) + '  TotalBinds: ' + IntToStr(TRender.TotalBinds) + '  ';
     //fOnCursorUpdate(5, Format('Bind0: %d SkipB0: %d TotalB: %d SkipTB: %d', [TRender.Bind0, TRender.SkipBind0, TRender.TotalBinds, TRender.TotalSkipBinds]));
     for I := Low(TRender.Bind0Src) to High(TRender.Bind0Src) do
       Str := Str + TRender.Bind0Src[I].From + ': ' + IntToStr(TRender.Bind0Src[I].Cnt) + '  ';
