@@ -138,7 +138,7 @@ begin
       glEnd;
 
       //Render beveled edges
-      TRender.BindTexture(0);
+      TRender.BindTexture(0, 9, 'UI3DBtn');
 
       c1 := 1 - Down;
       c2 := Down;
@@ -359,7 +359,7 @@ begin
 
     glPopMatrix;
   end;
-  TRender.BindTexture(0);
+  TRender.BindTexture(0, 10, 'UIPic');
 end;
 
 
@@ -585,7 +585,7 @@ begin
     if (I = Length(aText)) and (PrevAtlas <> -1) then
       glEnd;
   end;
-  TRender.BindTexture(0);
+  TRender.BindTexture(0, 11, 'UITxt');
 
   if SHOW_TEXT_OUTLINES then
   begin
@@ -629,7 +629,7 @@ begin
     glTexCoord2f(0, aTexture.V);          glVertex2f(aLeft, aTop+aHeight);
   glEnd;
 
-  TRender.BindTexture(0);
+  TRender.BindTexture(0, 12, 'UITexture');
 end;
 
 

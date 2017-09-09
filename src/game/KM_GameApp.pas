@@ -34,6 +34,7 @@ type
     procedure LoadGameFromScript(aMissionFile, aGameName: UnicodeString; aCRC: Cardinal; aCampaign: TKMCampaign; aMap: Byte; aGameMode: TGameMode; aDesiredLoc: ShortInt; aDesiredColor: Cardinal);
     procedure LoadGameFromScratch(aSizeX, aSizeY: Integer; aGameMode: TGameMode);
     function SaveName(const aName, aExt: UnicodeString; aIsMultiplayer: Boolean): UnicodeString;
+    procedure RenderComplete(aDescr: array of String; aData: array of Cardinal);
   public
     constructor Create(aRenderControl: TKMRenderControl; aScreenX, aScreenY: Word; aVSync: Boolean; aOnLoadingStep: TEvent; aOnLoadingText: TUnicodeStringEvent; aOnCursorUpdate: TIntegerStringEvent; NoMusic: Boolean = False);
     destructor Destroy; override;
@@ -95,7 +96,7 @@ var
 
 implementation
 uses
-  KM_Log, KM_Main, KM_GameCursor, KM_Saves,
+  KM_Log, KM_Main, KM_GameCursor, KM_Saves, KM_RenderPool,
   {$IFDEF USE_MAD_EXCEPT} KM_Exceptions, {$ENDIF}
   KM_Maps, KM_Resource, KM_Sound, KM_CommonUtils, KM_GameInputProcess, KM_Controls;
 
@@ -497,6 +498,7 @@ begin
     gMain.FormMain.ControlsReset;
 
   gGame := TKMGame.Create(aGameMode, fRender, fNetworking);
+  gRenderPool.OnRenderComplete := RenderComplete;
   try
     gGame.Load(aFilePath);
   except
@@ -533,6 +535,7 @@ begin
     gMain.FormMain.ControlsReset;
 
   gGame := TKMGame.Create(aGameMode, fRender, fNetworking);
+  gRenderPool.OnRenderComplete := RenderComplete;
   try
     gGame.GameStart(aMissionFile, aGameName, aCRC, aCampaign, aMap, aDesiredLoc, aDesiredColor);
   except
@@ -568,6 +571,7 @@ begin
     gMain.FormMain.ControlsReset;
 
   gGame := TKMGame.Create(aGameMode, fRender, nil);
+  gRenderPool.OnRenderComplete := RenderComplete;
   try
     gGame.GameStart(aSizeX, aSizeY);
   except
@@ -711,12 +715,15 @@ end;
 
 
 procedure TKMGameApp.Render(aForPrintScreen: Boolean);
+var I: Integer;
+    Str: String;
 begin
   if SKIP_RENDER then Exit;
   if fIsExiting then Exit;
   if fRender.Blind then Exit;
   if not fTimerUI.Enabled then Exit; //Don't render while toggling locale
 
+  TRender.ResetBindStats;
   fRender.BeginFrame;
 
   if gGame <> nil then
@@ -729,8 +736,30 @@ begin
   fRender.EndFrame;
 
   if not aForPrintScreen and (gGame <> nil) then
-    if Assigned(fOnCursorUpdate) then
-      fOnCursorUpdate(5, 'Object: ' + IntToStr(gGameCursor.ObjectUID));
+//    if Assigned(fOnCursorUpdate) then
+//      fOnCursorUpdate(5, 'Object: ' + IntToStr(gGameCursor.ObjectUID));
+  if Assigned(fOnCursorUpdate) then
+  begin
+    Str := 'TotalBind0: ' + IntToStr(TRender.Bind0) + '  ';
+    //fOnCursorUpdate(5, Format('Bind0: %d SkipB0: %d TotalB: %d SkipTB: %d', [TRender.Bind0, TRender.SkipBind0, TRender.TotalBinds, TRender.TotalSkipBinds]));
+    for I := Low(TRender.Bind0Src) to High(TRender.Bind0Src) do
+      Str := Str + TRender.Bind0Src[I].From + ': ' + IntToStr(TRender.Bind0Src[I].Cnt) + '  ';
+    fOnCursorUpdate(6, Str);
+  end;
+end;
+
+
+procedure TKMGameApp.RenderComplete(aDescr: array of String; aData: array of Cardinal);
+var I: Integer;
+    Str: String;
+begin
+  if Assigned(fOnCursorUpdate) then
+  begin
+    Str := '';
+    for I := Low(aDescr) to High(aDescr) do
+      Str := Str + aDescr[I] + ': ' + IntToStr(aData[I]) + ' ';
+    fOnCursorUpdate(5, Str);
+  end;
 end;
 
 

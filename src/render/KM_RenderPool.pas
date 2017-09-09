@@ -94,6 +94,7 @@ type
     procedure RenderWireHousePlan(P: TKMPoint; aHouseType: THouseType);
     procedure RenderTileOwnerLayer(aRect: TKMRect);
   public
+    OnRenderComplete: TRenderCompleteEvent;
     constructor Create(aViewport: TKMViewport; aRender: TRender);
     destructor Destroy; override;
 
@@ -227,11 +228,24 @@ end;
 procedure TRenderPool.Render;
 var
   ClipRect: TKMRect;
+  Descr: array [0..1] of String;
+  Data: array [0..1] of Cardinal;
+  I: Integer;
+  T,T1: Cardinal;
 begin
   if fRender.Blind then Exit;
 
+  I := 0;
+  T := TimeGet;
+
   ApplyTransform;
 
+//  T1 := TimeGet;
+//  Descr[I] := 'ApplTrans';
+//  Data[I] := T1 - T;
+//  Inc(I);
+
+  T := TimeGet;
   glPushAttrib(GL_LINE_BIT or GL_POINT_BIT);
     glLineWidth(fViewport.Zoom * 2);
     glPointSize(fViewport.Zoom * 5);
@@ -239,9 +253,21 @@ begin
     // Render only within visible area
     ClipRect := fViewport.GetClip;
 
+//    T1 := TimeGet;
+//    Descr[I] := 'GetClip';
+//    Data[I] := T1 - T;
+//    Inc(I);
+
+    T := TimeGet;
     // Collect players plans for terrain layer
     CollectPlans(ClipRect);
 
+//    T1 := TimeGet;
+//    Descr[I] := 'CollPlans';
+//    Data[I] := T1 - T;
+//    Inc(I);
+
+    T := TimeGet;
     // With depth test we can render all terrain tiles and then apply light/shadow without worrying about
     // foothills shadows going over mountain tops. Each tile strip is rendered an next Z plane.
     // Means that Z-test on gpu will take care of clipping the foothill shadows
@@ -249,46 +275,116 @@ begin
 
     // Everything flat of terrain
     fRenderTerrain.ClipRect := ClipRect;
+
+//    T1 := TimeGet;
+//    Descr[I] := 'befBase';
+//    Data[I] := T1 - T;
+//    Inc(I);
+
+    T := TimeGet;
     fRenderTerrain.RenderBase(gTerrain.AnimStep, gMySpectator.FogOfWar);
+    T1 := TimeGet;
+    Descr[I] := 'Base';
+    Data[I] := T1 - T;
+    Inc(I);
 
     // Disable depth test //and write to depth buffer,
     // so that terrain shadows could be applied seamlessly ontop
     glDisable(GL_DEPTH_TEST);
 
+    T := TimeGet;
     fRenderTerrain.RenderFences;
+//    T1 := TimeGet;
+//    Descr[I] := 'RFence';
+//    Data[I] := T1 - T;
+//    Inc(I);
 
+    T := TimeGet;
     fRenderTerrain.RenderPlayerPlans(fFieldsList, fHousePlansList);
+//    T1 := TimeGet;
+//    Descr[I] := 'PlPlans';
+//    Data[I] := T1 - T;
+//    Inc(I);
 
+    T := TimeGet;
     RenderTileOwnerLayer(ClipRect);
+//    T1 := TimeGet;
+//    Descr[I] := 'TOLayer';
+//    Data[I] := T1 - T;
+//    Inc(I);
 
+    T := TimeGet;
     // House highlight, debug display
     RenderBackgroundUI(ClipRect);
+//    T1 := TimeGet;
+//    Descr[I] := 'BackUI';
+//    Data[I] := T1 - T;
+//    Inc(I);
 
+    T := TimeGet;
     // Sprites are added by Terrain/Players/Projectiles, then sorted by position
     fRenderList.Clear;
     CollectTerrainObjects(ClipRect, gTerrain.AnimStep);
-    PaintRallyPoints(0);
+//    T1 := TimeGet;
+//    Descr[I] := 'ColTerObj';
+//    Data[I] := T1 - T;
+//    Inc(I);
 
+    PaintRallyPoints(0);
+    T := TimeGet;
     gHands.Paint(ClipRect); // Units and houses
+//    T1 := TimeGet;
+//    Descr[I] := 'gHandsUH';
+//    Data[I] := T1 - T;
+//    Inc(I);
+
+    T := TimeGet;
     gProjectiles.Paint;
+//    T1 := TimeGet;
+//    Descr[I] := 'Projec';
+//    Data[I] := T1 - T;
+//    Inc(I);
 
     if gGame.GamePlayInterface <> nil then
       gGame.GamePlayInterface.Alerts.Paint(0);
 
+    T := TimeGet;
     fRenderList.SortRenderList;
-    fRenderList.Render;
+//    T1 := TimeGet;
+//    Descr[I] := 'SORT';
+//    Data[I] := T1 - T;
+//    Inc(I);
 
+    T := TimeGet;
+    fRenderList.Render;
+    T1 := TimeGet;
+    Descr[I] := 'LIST_REN';
+    Data[I] := T1 - T;
+    Inc(I);
+
+    T := TimeGet;
     fRenderTerrain.RenderFOW(gMySpectator.FogOfWar, False);
+//    T1 := TimeGet;
+//    Descr[I] := 'Fow';
+//    Data[I] := T1 - T;
+//    Inc(I);
 
     // Alerts/rally second pass is rendered after FOW
     PaintRallyPoints(1);
     if gGame.GamePlayInterface <> nil then
       gGame.GamePlayInterface.Alerts.Paint(1);
 
+    T := TimeGet;
     // Cursor overlays (including blue-wire plans), go on top of everything
     RenderForegroundUI;
+//    T1 := TimeGet;
+//    Descr[I] := 'ForeUI';
+//    Data[I] := T1 - T;
+//    Inc(I);
 
   glPopAttrib;
+  if Assigned(OnRenderComplete) then
+    OnRenderComplete(Descr, Data);
 end;
 
 
@@ -1088,7 +1184,7 @@ begin
     glEnd;
   end;
 
-  TRender.BindTexture(0);
+  //TRender.BindTexture(0, 0, 'RSpr');
 end;
 
 
@@ -1131,7 +1227,7 @@ begin
         glTexCoord2f(Alt.u2,Alt.v1); glVertex2f(pX+pxWidth/CELL_SIZE_PX,pY-pxHeight/CELL_SIZE_PX);
         glTexCoord2f(Alt.u1,Alt.v1); glVertex2f(pX                     ,pY-pxHeight/CELL_SIZE_PX);
       glEnd;
-      TRender.BindTexture(0);
+      TRender.BindTexture(0, 1, 'RSprATest');
     end;
 
     // Stone progress
@@ -1150,7 +1246,7 @@ begin
             glTexCoord2f(Alt.u2,Alt.v1); glVertex2f(X2+pxWidth/CELL_SIZE_PX,Y2-pxHeight/CELL_SIZE_PX);
             glTexCoord2f(Alt.u1,Alt.v1); glVertex2f(X2                     ,Y2-pxHeight/CELL_SIZE_PX);
           glEnd;
-          TRender.BindTexture(0);
+          TRender.BindTexture(0, 2, 'RSprATest2');
         end;
     end;
 
@@ -1177,7 +1273,7 @@ begin
       glTexCoord2f(Tex.u2,Tex.v1); glVertex2f(pX+pxWidth/CELL_SIZE_PX,pY-pxHeight/CELL_SIZE_PX);
       glTexCoord2f(Tex.u1,Tex.v1); glVertex2f(pX                     ,pY-pxHeight/CELL_SIZE_PX);
     glEnd;
-    TRender.BindTexture(0);
+    TRender.BindTexture(0, 3, 'RSprATest3');
   end;
 
   glDisable(GL_STENCIL_TEST);

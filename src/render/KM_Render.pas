@@ -4,7 +4,7 @@ interface
 uses
   {$IFDEF WDC} Windows, Graphics, JPEG, {$ENDIF} //Lazarus doesn't have JPEG library yet -> FPReadJPEG?
   {$IFDEF Unix} LCLIntf, LCLType, OpenGLContext, {$ENDIF}
-  Math, dglOpenGL, KromOGLUtils, KromUtils, KM_RenderControl;
+  Classes, Math, dglOpenGL, KromOGLUtils, KromUtils, KM_RenderControl, KM_CommonTypes;
 
 
 type
@@ -18,6 +18,11 @@ type
 
 type
   TRenderMode = (rm2D, rm3D);
+  TBind0Stat = record
+    From: String;
+    Cnt: Cardinal;
+  end;
+
 
   //General OpenGL handling
   TRender = class
@@ -29,6 +34,11 @@ type
     class var
       fLastBindedTextureId: Cardinal;
   public
+    class var
+      TotalBinds, TotalSkipBinds, Bind0, SkipBind0: Cardinal;
+    class var
+      Bind0Src: array [0..12] of TBind0Stat;
+
     constructor Create(aRenderControl: TKMRenderControl; ScreenX,ScreenY: Integer; aVSync: Boolean);
     destructor Destroy; override;
 
@@ -39,7 +49,8 @@ type
     class function GenTexture(DestX, DestY: Word; const Data: Pointer; Mode: TTexFormat): GLUint;
     class procedure DeleteTexture(aTex: GLUint);
     class procedure UpdateTexture(aTexture: GLuint; DestX, DestY: Word; Mode: TTexFormat; const Data: Pointer);
-    class procedure BindTexture(aTexId: Cardinal);
+    class procedure BindTexture(aTexId: Cardinal; aSrcI: Integer = -1; aSrc: String = '');
+    class procedure ResetBindStats;
 
     property RendererVersion: UnicodeString read fOpenGL_Version;
     function IsOldGLVersion: Boolean;
@@ -117,15 +128,44 @@ end;
 //Do not bind same texture again, it can drastically change render performance
 //F.e. on an average Map (Cube 256x256) when full map is shown in viewport
 //there are only ~10k new texture binds, when all other ~30k binds can be skipped
-class procedure TRender.BindTexture(aTexId: Cardinal);
+class procedure TRender.BindTexture(aTexId: Cardinal; aSrcI: Integer = -1; aSrc: String = '');
 begin
   if aTexId <> fLastBindedTextureId then
   begin
     glBindTexture(GL_TEXTURE_2D, aTexId);
     fLastBindedTextureId := aTexId;
+    if aTexId = 0 then
+    begin
+      Inc(Bind0);
+      if aSrcI <> -1 then
+      begin
+        Bind0Src[aSrcI].From := aSrc;
+        Bind0Src[aSrcI].Cnt := Bind0Src[aSrcI].Cnt + 1;
+      end;
+    end;
+    Inc(TotalBinds);
+  end else begin
+    if aTexId = 0 then
+      Inc(SkipBind0);
+    Inc(TotalSkipBinds);
   end;
+
 end;
 
+
+class procedure TRender.ResetBindStats;
+var I: Integer;
+begin
+  Bind0 := 0;
+  SkipBind0 := 0;
+  TotalBinds := 0;
+  TotalSkipBinds := 0;
+  for I := Low(Bind0Src) to High(Bind0Src) do
+  begin
+    Bind0Src[I].Cnt := 0;
+    Bind0Src[I].From := '';
+  end;
+end;
 
 procedure TRender.Resize(aWidth, aHeight: Integer);
 begin
