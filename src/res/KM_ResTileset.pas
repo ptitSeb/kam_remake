@@ -7,8 +7,8 @@ uses
 
 
 const
-  TILES_CNT = 301;
-  MAX_TILE_TO_SHOW = 301;
+  TILES_CNT = 303;
+  MAX_TILE_TO_SHOW = 303;
   MAX_STATIC_TERRAIN_ID = 4997;
   WATER_ANIM_BELOW_350: array[0..6] of Word = (305, 311, 313, 323, 324, 345, 349);
 
@@ -79,20 +79,22 @@ type
     tkIron,
     tkWater,
     tkFastWater,
-    tkLava);
+    tkLava,
+    tkSmthRed,
+    tkSmthDarkRed);
 
 const
-  TER_KIND_ORDER: array[tkCustom..tkLava] of Integer =
+  TER_KIND_ORDER: array[tkCustom..tkSmthDarkRed] of Integer =
     (0,1,2,3,4,5,6,7,8,9,10,11,
       -1,    // To make Water/FastWater-GrassyWater transition possible with layers we need GrassyWater to be above Water because of animation (water above grassy anim looks ugly)
       13,
       -2,
       15,16,17,18,19,20,21,22,23,24,25,
       -4,-3, // Put GrassyWater/Water/FastWater always to the base layer, because of animation
-      28);
+      28,29,30);
 
   BASE_TERRAIN: array[TKMTerrainKind] of Word = //tkCustom..tkLava] of Word =
-    (0, 0, 8, 17, 32, 26, 27, 28, 29, 34, 35, 215, 48, 40, 44, 47, 46, 45, 132, 159, 164, 245, 20, 155, 147, 151, 192, 209, 7);
+    (0, 0, 8, 17, 32, 26, 27, 28, 29, 34, 35, 215, 48, 40, 44, 47, 46, 45, 132, 159, 164, 245, 20, 155, 147, 151, 192, 209, 7, 301, 302);
 
 //  TILE_MASKS: array[mt_2Straight..mt_4Square] of Word =
 //      (279, 278, 280, 281, 282, 277);
@@ -380,7 +382,7 @@ const
   (tkStone,tkStone,tkStone,tkStone), (tkStone,tkStone,tkStone,tkStone), (tkStone,tkStone,tkStone,tkStone),
   (tkShallowSnow,tkStone,tkShallowSnow,tkShallowSnow),
    //299
-  (tkGoldMount,tkIronMount,tkGoldMount,tkGoldMount), (tkIronMount,tkIronMount,tkLava,tkIronMount)
+  (tkGoldMount,tkIronMount,tkGoldMount,tkGoldMount), (tkIronMount,tkIronMount,tkLava,tkIronMount), (tkSmthRed,tkSmthRed,tkSmthRed,tkSmthRed), (tkSmthDarkRed,tkSmthDarkRed,tkSmthDarkRed,tkSmthDarkRed)
   );
 
 type

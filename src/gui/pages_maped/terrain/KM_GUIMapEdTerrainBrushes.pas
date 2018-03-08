@@ -58,8 +58,8 @@ const
   Surfaces: array [0..5, 0..4] of TKMTerrainKind = (
     (tkGrass,       tkMoss,         tkPaleGrass,    tkGrassDirt,    tkDirt),
     (tkCoastSand,   tkGrassSand1,   tkGrassSand2,   tkGrassSand3,   tkSand),
-    (tkSwamp,       tkGrassyWater,  tkWater,        tkFastWater,    tkCustom),
-    (tkShallowSnow, tkSnow,         tkDeepSnow,     tkIce,          tkCustom),
+    (tkSwamp,       tkGrassyWater,  tkWater,        tkFastWater,    tkSmthRed),
+    (tkShallowSnow, tkSnow,         tkDeepSnow,     tkIce,          tkSmthDarkRed),
     (tkStone,       tkGoldMount,    tkIronMount,    tkCobbleStone,  tkGravel),
     (tkCoal,        tkGold,         tkIron,         tkLava,         tkAbyss));
 var
