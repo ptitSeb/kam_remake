@@ -881,6 +881,19 @@ type
   end;
 
 
+  TKMScrollPanel = class(TKMPanel)
+  private
+    fTotalWidth: Integer;
+    fTotalHeight: Integer;
+    fScrollBarSize: Integer;
+    fScrollBarH: TKMScrollBar;
+    fScrollBarV: TKMScrollBar;
+    procedure UpdateScrollBars;
+  public
+    constructor Create(aParent: TKMPanel; aLeft, aTop, aVisibleWidth, aVisibleHeight, aWidth, aHeight: Integer;  aStyle: TKMButtonStyle);
+  end;
+
+
   TKMListBox = class(TKMControl)
   private
     fAutoHideScrollBar: Boolean;
@@ -4846,6 +4859,40 @@ begin
       sa_Vertical:   TKMRenderUI.Write3DButton(AbsLeft,AbsTop+Width+fThumbPos,Width,fThumbSize,rxGui,0,$FFFF00FF,ButtonState,fStyle);
       sa_Horizontal: TKMRenderUI.Write3DButton(AbsLeft+Height+fThumbPos,AbsTop,fThumbSize,Height,rxGui,0,$FFFF00FF,ButtonState,fStyle);
     end;
+end;
+
+
+{ TKMScrollPanel }
+constructor TKMScrollPanel.Create(aParent: TKMPanel; aLeft, aTop, aVisibleWidth, aVisibleHeight, aWidth, aHeight: Integer; aStyle: TKMButtonStyle);
+begin
+  inherited Create(aParent, aLeft, aTop, aVisibleWidth, aVisibleHeight);
+
+  fScrollBarSize := 20;
+  fTotalWidth := aVisibleWidth;
+  fTotalHeight := aVisibleHeight;
+
+  fScrollBarV := TKMScrollBar.Create(aParent, aLeft + aWidth - fScrollBarSize, aTop,
+                                              fScrollBarSize, aHeight, sa_Vertical, aStyle);
+  fScrollBarH := TKMScrollBar.Create(aParent, aLeft, aTop + aHeight - fScrollBarSize,
+                                              aWidth, fScrollBarSize, sa_Horizontal, aStyle);
+  UpdateScrollBars;
+end;
+
+
+procedure TKMScrollPanel.UpdateScrollBars;
+begin
+  fScrollBarV.Visible := Height < fTotalHeight;
+  fScrollBarH.Visible := Width < fTotalWidth;
+
+  if fScrollBarV.Visible and fScrollBarH.Visible then
+  begin
+    fScrollBarV.Height := Height - fScrollBarSize;
+    fScrollBarH.Width := Width - fScrollBarSize;
+  end else begin
+    fScrollBarV.Height := Height;
+    fScrollBarH.Width := Width;
+  end;
+
 end;
 
 
