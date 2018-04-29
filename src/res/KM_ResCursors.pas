@@ -13,7 +13,9 @@ type
     kmc_Default, kmc_Info, kmc_Attack, kmc_JoinYes, kmc_JoinNo, kmc_Edit, kmc_DragUp,
     kmc_Dir0, kmc_Dir1, kmc_Dir2, kmc_Dir3, kmc_Dir4, kmc_Dir5, kmc_Dir6, kmc_Dir7, kmc_DirNA,
     kmc_Scroll0, kmc_Scroll1, kmc_Scroll2, kmc_Scroll3, kmc_Scroll4, kmc_Scroll5, kmc_Scroll6, kmc_Scroll7,
-    kmc_Beacon, kmc_Drag, kmc_PaintBucket, kmc_Invisible);
+    kmc_Beacon, kmc_Drag,
+    kmc_Invisible, //for some reason kmc_Invisible should be at its current position in enum. Otherwise 1px dot will appear while TroopSelection is on
+    kmc_PaintBucket);
 
 
   TKMResCursors = class
@@ -42,7 +44,7 @@ const
     1, 452, 457, 460, 450, 453, 449,
     511,  512, 513, 514, 515, 516, 517, 518, 519,
     4, 7, 3, 9, 5, 8, 2, 6,
-    456, 451, 661, 999);
+    456, 451, 999, 661);
 
   //Which cursor is used for which direction
   TKMCursorDirections: array [TKMDirection] of TKMCursor = (
@@ -71,8 +73,8 @@ const
   SF = 17; //Full width/height of a scroll cursor
   SH = 8; //Half width/height of a scroll cursor
   //Measured manually
-  CursorOffsetsX: array [TKMCursor] of Integer = (0,0,20, 0, 0,-8, 9,0, 1,1,1,0,-1,-1,-1,0, SH,SF,SF,SF,SH, 0, 0,0, 0,0,27,0);
-  CursorOffsetsY: array [TKMCursor] of Integer = (0,9,10,18,20,44,13,0,-1,0,1,1, 1, 0,-1,0, 0 ,0 ,SH,SF,SF,SF,SH,0,28,0,28,0);
+  CursorOffsetsX: array [TKMCursor] of Integer = (0,0,20, 0, 0,-8, 9,0, 1,1,1,0,-1,-1,-1,0, SH,SF,SF,SF,SH, 0, 0,0, 0,0,0,27);
+  CursorOffsetsY: array [TKMCursor] of Integer = (0,9,10,18,20,44,13,0,-1,0,1,1, 1, 0,-1,0, 0 ,0 ,SH,SF,SF,SF,SH,0,28,0,0,28);
 var
   KMC: TKMCursor;
   sx,sy,x,y: Integer;
@@ -87,7 +89,7 @@ begin
   bm  := TBitmap.Create; bm.HandleType  := bmDIB; bm.PixelFormat  := pf32bit;
   bm2 := TBitmap.Create; bm2.HandleType := bmDIB; bm2.PixelFormat := pf32bit;
 
-  for KMC := Low(KMC) to High(KMC) do
+  for KMC := Low(TKMCursor) to High(TKMCursor) do
   begin
 
     //Special case for invisible cursor
