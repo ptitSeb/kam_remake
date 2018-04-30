@@ -3967,6 +3967,8 @@ begin
 
   Label_DebugInfo.Font := fnt_Arial;
   Label_DebugInfo.Caption := S;
+  Label_DebugInfo.Visible := (Trim(S) <> '');
+
   TextSize := gRes.Fonts[fnt_Arial].GetTextSize(S);
 
   Bevel_DebugInfo.Width := IfThen(TextSize.X <= 1, 0, TextSize.X + 20);
