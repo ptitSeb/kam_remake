@@ -280,6 +280,10 @@ begin
   Wares[wt_Arbalet    ].fMarketPrice := (1/ProductionRate[wt_Arbalet]) + Wares[wt_Steel].MarketPrice + Wares[wt_Coal].MarketPrice;
   Wares[wt_Horse      ].fMarketPrice := (1/ProductionRate[wt_Horse]) + 4*Wares[wt_Corn].MarketPrice;
   Wares[wt_Fish       ].fMarketPrice := NON_RENEW*(1/ProductionRate[wt_Fish]);
+
+  //Special gold prices: x2
+  Wares[wt_GoldOre].fMarketPrice := 2*Wares[wt_GoldOre].fMarketPrice;
+  Wares[wt_Gold   ].fMarketPrice := 2*Wares[wt_Gold   ].fMarketPrice;
 end;
 
 
