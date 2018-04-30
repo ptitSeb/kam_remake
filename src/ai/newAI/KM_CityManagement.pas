@@ -853,7 +853,7 @@ begin
             H.ResOrder[K] := 0;
           H.ResOrder[MaxIdx] := WEAPONS_PER_A_UPDATE; // With update each 1-2 minutes there is not need to calculate something more
           if (HT = htArmorWorkshop) then
-            H.ResOrder[2] := 10;
+            H.ResOrder[1] := 10;
         end;
   end;
 end;
