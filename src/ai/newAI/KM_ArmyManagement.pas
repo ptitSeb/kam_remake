@@ -467,6 +467,7 @@ type
   begin
     // Get count of available group types
     FillChar(GTArr, SizeOf(GTArr), #0);
+
     for I := 0 to aAG.Count - 1 do
       Inc(  GTArr[ aAG.GroupArr[I].GroupType ]  );
 
@@ -514,44 +515,24 @@ begin
   // Check defences and comparison of strength
   DefRatio := fDefence.DefenceStatus();
   with fAttackRequest do
-
-  // Get array of pointers to available groups
   begin
     TakeAllIn := (BestAllianceCmp > MIN_BEST_ALLI_CMP) // The weakest opponent have not enought soldiers
-    if (Group = nil)
-      OR Group.IsDead
+                 OR (WorstAllianceCmp > MIN_WORST_ALLI_CMP); // The strongest opponent have not enought soldiers
     if (DefRatio < MIN_DEF_RATIO) AND not TakeAllIn then // AI has not enought soldiers in defence AND opponent is not weak
       Exit;
-    with AG do
-    begin
-    if (Length(AG.GroupArr) <= AG.Count) then
-      SetLength(AG.GroupArr, AG.Count + 16);
-      SetLength(AG.Price, AG.Count + 16);
-    end;
-    AG.GroupArr[AG.Count] := Group;
-    AG.Price[AG.Count] := 0;
-    end;
+  end;
   // Get array of pointers to available groups
   AG := GetGroups(TakeAllIn);
-        Inc(AG.Count,1); // Confirm that the group should be in array GroupArr
-        Inc(AG.Count,1); // Confirm that the group should be in array GroupArr
+  // If we dont have enought groups then exit (if we should take all check if there are already some combat groups)
   if (not TakeAllIn OR (fAttack.Count > 2)) AND (AG.Count < MIN_GROUPS_IN_ATTACK) then
     Exit;
   // Find best target of owner and order attack
-      with AG do
-      begin
-      Dec(AG.Count,1);
-      AG.GroupArr[BestIdx] := AG.GroupArr[AG.Count];
-      AG.Price[BestIdx] := AG.Price[AG.Count];
-      end;
   if FindBestTarget(fAttackRequest.BestEnemy, TargetPoint, TakeAllIn) then
-    with AG do
-    begin
-      for I := 0 to Count - 1 do
-        fDefence.ReleaseGroup(GroupArr[I]);
-    OrderAttack(TargetPoint, AG.Count, AG.GroupArr);
-    //if ForceToAttack OR (gAIFields.Eye.ArmyEvaluation.CompareAllianceStrength(TargetOwner, AvailableGroups) > COMPANY_MIN_ATTACK_CHANCE) then
-    end;
+  begin
+    for I := 0 to AG.Count - 1 do
+      fDefence.ReleaseGroup(AG.GroupArr[I]);
+    OrderAttack(TargetPoint, AG);
+  end;
 end;
 
 

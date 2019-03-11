@@ -346,7 +346,7 @@ function TKMSupervisor.FindClosestEnemies(var aPlayers: TKMHandIndexArray; var a
       begin
         if (gHands[Player].UnitGroups.Count = 0) then
           continue;
-        Group := gHands[Player].UnitGroups.Groups[ KaMRandom(gHands[Player].UnitGroups.Count) ];
+        Group := gHands[Player].UnitGroups.Groups[ KaMRandom(gHands[Player].UnitGroups.Count, 'TKMSupervisor.FindClosestEnemies') ];
         if (Group <> nil) AND not Group.IsDead AND not KMSamePoint(KMPOINT_ZERO,Group.Position) then
         begin
           SetLength(CenterPoints, 1);

@@ -767,7 +767,6 @@ var
     Squad: TAISquad;
   begin
     Output := False;
-    Dist := 0;
     // Ranged groups view: our ranged unit -> select target => each unit should fire
     GT := gt_Ranged;
     TargetIdx := 0; // Only for compiler
@@ -775,7 +774,7 @@ var
     begin
       Squad := AvailableSquads[GT].Squads[I];
       HighestThreat := INIT_THREAT;
-//      BestDist := 0;
+      BestDist := 0;
       for K := 0 to Length(fTargetU) - 1 do
         if (fTargetU[K].DistantThreat > 0) then
         begin
@@ -783,7 +782,7 @@ var
           Threat := fTargetU[K].DistantThreat - Dist;
           if (Threat > HighestThreat) then
           begin
-//            BestDist := Dist;
+            BestDist := Dist;
             HighestThreat := Threat;
             TargetIdx := K;
           end;
@@ -1395,7 +1394,6 @@ begin
 end;
 
 
-    Group := gHands[fOwner].UnitGroups.Groups[ KaMRandom(gHands[fOwner].UnitGroups.Count) ];
 procedure TKMArmyAttack.CreateCompany(aTargetPoint: TKMPoint; aGroups: TKMUnitGroupArray; aCompanyMode: TKMCompanyMode = cm_Attack);
   procedure PrepareCompany(var aCompany: TAICompany; aTargetHouse: TKMHouse; aTargetUnit: TKMUnit);
   var

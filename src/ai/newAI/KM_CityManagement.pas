@@ -2,8 +2,8 @@ unit KM_CityManagement;
 {$I KaM_Remake.inc}
 interface
 uses
-  Math, KM_HouseCollection, KM_CommonUtils, SysUtils, KM_Defaults, KM_CommonClasses, KM_Points,
-  KM_AISetup, KM_ResHouses, KM_ResWares, KM_ResUnits, KM_HandStats,
+  Math, KM_CommonUtils, SysUtils, KM_Defaults, KM_CommonClasses, KM_Points,
+  KM_AISetup, KM_ResHouses, KM_ResWares, KM_ResUnits, KM_HandStats, KM_HouseCollection,
   KM_CityPredictor, KM_CityBuilder, KM_CityPlanner, KM_AIArmyEvaluation;
 
 var

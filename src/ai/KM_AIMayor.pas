@@ -4,7 +4,7 @@ interface
 uses
   KM_AIMayorBalance, KM_AICityPlanner, KM_AISetup,
   KM_PathfindingRoad,
-  KM_ResHouses,
+  KM_ResHouses, KM_HouseCollection,
   KM_CommonClasses, KM_Defaults, KM_Points,
   KM_NavMeshDefences;
 
@@ -64,7 +64,7 @@ uses
   Classes, Math,
   KM_Game, KM_Hand, KM_HandsCollection,
   KM_AIFields, KM_Terrain,
-  KM_Houses, KM_HouseSchool, KM_HouseCollection,
+  KM_Houses, KM_HouseSchool,
   KM_Units, KM_UnitsCollection, KM_UnitActionWalkTo, KM_UnitTaskGoEat, KM_UnitTaskDelivery,
   KM_Resource, KM_ResWares,
   KM_NavMesh, KM_CommonUtils;
