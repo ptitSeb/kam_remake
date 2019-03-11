@@ -542,7 +542,7 @@ begin
 end;
 
 
-function TKMInfluences.CanPlaceHouseByInfluence(const aPL: TKMHandIndex; const aIdx: Word; const aIgnoreAllies: Boolean = False): Boolean; overload;
+function TKMInfluences.CanPlaceHouseByInfluence(const aPL: TKMHandIndex; const aIdx: Word; const aIgnoreAllies: Boolean = False): Boolean;
 var
   BestOwner: TKMhandIndex;
 begin
