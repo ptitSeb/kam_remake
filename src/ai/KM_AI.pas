@@ -2,11 +2,10 @@ unit KM_AI;
 {$I KaM_Remake.inc}
 interface
 uses
-  KM_CommonClasses, KM_CommonTypes, KM_Defaults,
+  KM_CommonClasses, KM_CommonTypes, KM_CommonUtils, KM_Defaults,
   KM_Houses, KM_Units, KM_Units_Warrior,
   KM_AISetup, KM_AIMayor, KM_AIGoals, KM_AIGeneral,
   KM_CityManagement, KM_ArmyManagement;
-
 
 type
   //Things that player does automatically
@@ -438,12 +437,16 @@ end;
 
 
 procedure TKMHandAI.AfterMissionInit();
+var
+  Time: Cardinal;
 begin
   fMayor.AfterMissionInit();
 
+  Time := TimeGet();
   gAIFields.Eye.OwnerUpdate(fOwner);
   fCityManagement.AfterMissionInit();
   fArmyManagement.AfterMissionInit();
+  Time := TimeGet() - Time;
 end;
 
 

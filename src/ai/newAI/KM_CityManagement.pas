@@ -35,6 +35,7 @@ type
     procedure CheckStoreWares(aTick: Cardinal);
     procedure CheckExhaustedHouses();
     procedure CheckAutoRepair();
+    procedure CheckWareDistribution();
 
     procedure WeaponsBalance();
     procedure OrderWeapons();
@@ -131,22 +132,6 @@ end;
 
 
 procedure TKMCityManagement.AfterMissionInit();
-  procedure SetWareDistribution();
-  begin
-    // Top priority for gold mines
-    gHands[fOwner].Stats.WareDistribution[wt_Coal, htMetallurgists] := 5;
-    gHands[fOwner].Stats.WareDistribution[wt_Coal, htWeaponSmithy] := 3;
-    gHands[fOwner].Stats.WareDistribution[wt_Coal, htIronSmithy] := 3;
-    gHands[fOwner].Stats.WareDistribution[wt_Coal, htArmorSmithy] := 3;
-    gHands[fOwner].Stats.WareDistribution[wt_Wood, htArmorWorkshop] := 2;
-    gHands[fOwner].Stats.WareDistribution[wt_Wood, htWeaponWorkshop] := 5;
-    gHands[fOwner].Stats.WareDistribution[wt_Steel, htWeaponSmithy] := 5;
-    gHands[fOwner].Stats.WareDistribution[wt_Steel, htArmorSmithy] := 5;
-
-    gHands[fOwner].Houses.UpdateResRequest;
-  end;
-var
-  GoldCnt, IronCnt, FieldCnt, BuildCnt: Integer;
 begin
   if SP_DEFAULT_ADVANCED_AI then
   begin
@@ -155,20 +140,10 @@ begin
     fSetup.ApplyAgressiveBuilderSetup(True);
   end;
 
-  // Change distribution
-  SetWareDistribution();
-  fPredictor.AfterMissionInit();
-
   // Find resources around Loc and change building policy
-  GoldCnt := 0;
-  IronCnt := 0;
-  FieldCnt := 0;
-  BuildCnt := 0;
-  gAIFields.Eye.ScanLocResources(GoldCnt, IronCnt, FieldCnt, BuildCnt);
-
-  fBuilder.AfterMissionInit(GoldCnt, IronCnt, FieldCnt, BuildCnt);
-
-  fPredictor.CityInitialization(GoldCnt, IronCnt, FieldCnt, BuildCnt);
+  gAIFields.Eye.ScanLoc();
+  fBuilder.AfterMissionInit();
+  fPredictor.AfterMissionInit();
 end;
 
 
@@ -200,6 +175,7 @@ begin
     CheckMarketplaces();
     CheckStoreWares(aTick);
     CheckAutoRepair();
+    CheckWareDistribution();
     WeaponsBalance();
     OrderWeapons();
     CheckExhaustedHouses();
@@ -316,7 +292,7 @@ begin
     UnitReq[ut_Worker] := 0;
     if (Stats.GetWareBalance(wt_Gold) > LACK_OF_GOLD * 2.5) OR (GoldProduced > 0) then // Dont train servs / workers / recruits when we will be out of gold
     begin
-      UnitReq[ut_Worker] :=  fPredictor.WorkerCount;
+      UnitReq[ut_Worker] :=  fPredictor.WorkerCount;// * Byte(not gHands[fOwner].AI.ArmyManagement.Defence.CityUnderAttack);
       UnitReq[ut_Recruit] := RecruitsNeeded(Houses[htWatchTower]);
     end;
     if (Stats.GetWareBalance(wt_Gold) > LACK_OF_GOLD * 1.5) OR (GoldProduced > 0) then // Dont train servs / workers / recruits when we will be out of gold
@@ -363,7 +339,7 @@ begin
 end;
 
 
-//Check if specific woodcutters are in Fell only mode
+// Try trade
 procedure TKMCityManagement.CheckMarketplaces();
 var
   RequiedCnt, AvailableCnt: Word;
@@ -416,15 +392,15 @@ var
     end;
   end;
 const
-  SOLD_ORDER: array[0..27] of TKMWareType = (
+  SOLD_ORDER: array[0..21] of TKMWareType = (
     wt_Sausages,     wt_Wine,     wt_Fish,       wt_Bread,
     wt_Skin,         wt_Leather,  wt_Pig,
     wt_Trunk,        wt_Wood,
     wt_Shield,       wt_Axe,      wt_Pike,       wt_Bow,      wt_Armor,
     wt_MetalShield,  wt_Sword,    wt_Hallebard,  wt_Arbalet,  wt_MetalArmor,
-    wt_Horse,        wt_Corn,     wt_Flour,
-    wt_Steel,        wt_Gold,     wt_IronOre,    wt_Coal,     wt_GoldOre,
-    wt_Stone
+    wt_Horse,        wt_Corn,     wt_Flour
+    //wt_Steel,        wt_Gold,     wt_IronOre,    wt_Coal,     wt_GoldOre,
+    //wt_Stone
   );
   MIN_GOLD_AMOUNT = LACK_OF_GOLD * 3;
   LACK_OF_STONE = 50;
@@ -446,6 +422,10 @@ begin
     if (GetHouseQty(htMetallurgists) = 0)
        AND (GetWareBalance(wt_Gold) <= LACK_OF_GOLD) then
        AddWare(wt_Gold);
+    // Stone
+    if (GetWareBalance(wt_Stone)-GetHouseQty(htWatchTower)*5 < LACK_OF_STONE)
+      AND (Builder.Planner.PlannedHouses[htQuary].Completed = 0) then
+      AddWare(wt_Stone);
     // Gold ore
     if ( fPredictor.WareBalance[wt_GoldOre].Exhaustion < 20 )
       AND ( GetWareBalance(wt_Gold) < MIN_GOLD_AMOUNT )
@@ -455,10 +435,6 @@ begin
     if ( fPredictor.WareBalance[wt_Coal].Exhaustion < 20 )
       AND ( GetWareBalance(wt_Coal) < MIN_GOLD_AMOUNT ) then
       AddWare(wt_Coal);
-    // Stone
-    if (GetWareBalance(wt_Stone)-GetHouseQty(htWatchTower)*5 < LACK_OF_STONE)
-      AND (GetHouseQty(htQuary) = 0) then
-      AddWare(wt_Stone);
   end;
 
   if RequiedCnt = 0 then
@@ -585,6 +561,85 @@ begin
       end;
     end;
 end;
+
+
+procedure TKMCityManagement.CheckWareDistribution();
+  // Serfs are too ill to bring coal to metallurgists if AI place it 1 tile farther than iron production so there has to be created this function
+  function GetGoldBalance(): Boolean;
+  const
+    MAX_DEFICIT = 2;
+  var
+    I, Deficit, HouseCnt: Integer;
+    H: TKMHouse;
+  begin
+    HouseCnt := 0;
+    Deficit := 0;
+    with Builder.Planner.PlannedHouses[htMetallurgists] do
+      for I := 0 to Count - 1 do
+        if (Plans[I].House <> nil) AND not (Plans[I].House.IsDestroyed) then
+        begin
+          Inc(HouseCnt);
+          H := Plans[I].House;
+          Inc(Deficit, H.CheckResIn(wt_GoldOre) + H.CheckResOut(wt_GoldOre) - H.CheckResIn(wt_Coal) - H.CheckResOut(wt_Coal));
+        end;
+    Result := (Deficit / HouseCnt) > MAX_DEFICIT;
+  end;
+begin
+  with gHands[fOwner].Stats do
+  begin
+    // Wood
+    if Builder.WoodShortage OR Builder.TrunkShortage then
+    begin
+      WareDistribution[wt_Wood, htArmorWorkshop] := 0;
+      WareDistribution[wt_Wood, htWeaponWorkshop] := 2;
+    end
+    else
+    begin
+      WareDistribution[wt_Wood, htArmorWorkshop] := 2;
+      WareDistribution[wt_Wood, htWeaponWorkshop] := 5;
+    end;
+    // Coal
+    if Builder.GoldShortage then
+    begin
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htMetallurgists] := 5;
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htIronSmithy] := 1;
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htWeaponSmithy] := 0;
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htArmorSmithy] := 0;
+    end
+    else if GetGoldBalance() then
+    begin
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htMetallurgists] := 5;
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htIronSmithy] := 2;
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htWeaponSmithy] := 1;
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htArmorSmithy] := 1;
+    end
+    else
+    begin
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htMetallurgists] := 5;
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htIronSmithy] := 4;
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htWeaponSmithy] := 4;
+      gHands[fOwner].Stats.WareDistribution[wt_Coal, htArmorSmithy] := 4;
+    end;
+    // Corn
+    if (gHands[fOwner].Stats.GetWareBalance(wt_Bread) > 20) then
+    begin
+      gHands[fOwner].Stats.WareDistribution[wt_Corn, htMill] := 2;
+      gHands[fOwner].Stats.WareDistribution[wt_Corn, htSwine] := 5;
+      gHands[fOwner].Stats.WareDistribution[wt_Corn, htStables] := 4;
+    end
+    else
+    begin
+      gHands[fOwner].Stats.WareDistribution[wt_Corn, htMill] := 4;
+      gHands[fOwner].Stats.WareDistribution[wt_Corn, htSwine] := 5;
+      gHands[fOwner].Stats.WareDistribution[wt_Corn, htStables] := 3;
+    end;
+    // Steel is updated in WeaponsBalance
+    //gHands[fOwner].Stats.WareDistribution[wt_Steel, htWeaponSmithy] := 5;
+    //gHands[fOwner].Stats.WareDistribution[wt_Steel, htArmorSmithy] := 5;
+
+    gHands[fOwner].Houses.UpdateResRequest;
+  end;
+end; 
 
 
 // Calculate weapons demand from combat AI requirements
@@ -721,7 +776,7 @@ var
 //  gt_Melee,            //ut_MetalBarbarian
 //  gt_Mounted           //ut_Horseman
 //);
-//TroopCost: array [ut_Militia..ut_Cavalry, 1..4] of TKMWareType = (
+//TROOP_COST: array [ut_Militia..ut_Cavalry, 1..4] of TKMWareType = (
 //  (wt_Axe,          wt_None,        wt_None,  wt_None ), //Militia
 //  (wt_Shield,       wt_Armor,       wt_Axe,   wt_None ), //Axefighter
 //  (wt_MetalShield,  wt_MetalArmor,  wt_Sword, wt_None ), //Swordfighter
@@ -814,6 +869,7 @@ begin
   // Ware distribution = fraction / sum of fractions * 5
   gHands[fOwner].Stats.WareDistribution[wt_Steel, htWeaponSmithy] := Max(  1, Min(5, Round( ArmorFraction / (WeaponFraction + ArmorFraction) * IronShare) )  );
   gHands[fOwner].Stats.WareDistribution[wt_Steel, htArmorSmithy] := Max(  1, Min(5, Round( WeaponFraction / (WeaponFraction + ArmorFraction) * IronShare) )  );
+  gHands[fOwner].Houses.UpdateResRequest;
 end;
 
 

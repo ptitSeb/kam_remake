@@ -16,17 +16,17 @@ type
   // 1 universal class for city and army influence search
   TNavMeshInfluenceSearch = class(TNavMeshFloodFill)
   private
-    fEnemies: array of TKMHandIndex;
+    fEnemies: TKMHandIndexArray;
   protected
     fOwner: TKMHandIndex;
     fHouseInfluence: Boolean;
     fHighEnemiesIdx, fHighStatsIdx, fMaxEnemiesCnt: Integer;
+    fEnemiesStats: TKMEnemyStatisticsArray;
 
     function CanBeExpanded(const aIdx: Word): Boolean; override;
     procedure MarkAsVisited(const aIdx, aDistance: Word; const aPoint: TKMPoint); override;
   public
-    EnemiesStats: TKMEnemyStatisticsArray;
-    function FindClosestEnemies(const aOwner: TKMHandIndex; aCenterPoints: TKMPointArray; aHouseInfluence: Boolean = True): Boolean;
+    function FindClosestEnemies(const aOwner: TKMHandIndex; aCenterPoints: TKMPointArray; var aEnemiesStats: TKMEnemyStatisticsArray; aHouseInfluence: Boolean = True): Boolean;
   end;
 
   // 1 universal class for city and army influence flood fill
@@ -85,7 +85,7 @@ begin
        OR (  not fHouseInfluence AND (gAIFields.Influences.PresenceAllGroups[  fEnemies[I], aIdx  ] > ARMY_INFLUENCE_LIMIT) ) then
     begin
       // Mark presence
-      with EnemiesStats[fHighStatsIdx] do
+      with fEnemiesStats[fHighStatsIdx] do
       begin
         Player := fEnemies[I];
         Distance := fQueueArray[aIdx].Distance;
@@ -100,7 +100,7 @@ begin
 end;
 
 
-function TNavMeshInfluenceSearch.FindClosestEnemies(const aOwner: TKMHandIndex; aCenterPoints: TKMPointArray; aHouseInfluence: Boolean = True): Boolean;
+function TNavMeshInfluenceSearch.FindClosestEnemies(const aOwner: TKMHandIndex; aCenterPoints: TKMPointArray; var aEnemiesStats: TKMEnemyStatisticsArray; aHouseInfluence: Boolean = True): Boolean;
 const
   MAX_ENEMIES_AT_ONCE = 3;
 var
@@ -133,7 +133,7 @@ begin
   // Init variables
   fMaxEnemiesCnt := Min(Cnt, MAX_ENEMIES_AT_ONCE);
   fHighEnemiesIdx := fMaxEnemiesCnt - 1;
-  SetLength(EnemiesStats, fMaxEnemiesCnt);
+  SetLength(fEnemiesStats, fMaxEnemiesCnt);
   fHighStatsIdx := 0;
 
   // Flood fill
@@ -141,7 +141,8 @@ begin
   Result := (fHighStatsIdx > 0);
 
   // Set Result length
-  SetLength(EnemiesStats, fHighStatsIdx);
+  SetLength(fEnemiesStats, fHighStatsIdx);
+  aEnemiesStats := fEnemiesStats;
 end;
 
 

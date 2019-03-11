@@ -866,7 +866,6 @@ begin
   NodeList := TKMPointList.Create;
   try
     RoadExists := fTerrain.PathFinding.Route_Make(LocA, LocB, CanMakeRoads, 0, nil, NodeList);
-
     if RoadExists then
       for I := 1 to NodeList.Count do
         AddField(NodeList.List[i], ft_Road);
@@ -1231,6 +1230,7 @@ end;
 procedure TKMHand.SetAlliances(aIndex: Integer; aValue: TKMAllianceType);
 begin
   fAlliances[aIndex] := aValue;
+  gAIFields.Supervisor.UpdateAlliances();
 end;
 
 
@@ -1556,7 +1556,7 @@ begin
   if not gGame.IsMapEditor or (mlHouses in gGame.MapEditor.VisibleLayers) then
     fHouses.Paint(aRect);
 
-  if not SKIP_RENDER AND SHOW_DEFENCE_POSITIONS AND not fAI.Setup.NewAI then
+  if not SKIP_RENDER AND OVERLAY_DEFENCES AND not fAI.Setup.NewAI then
     fAI.General.DefencePositions.Paint;
 
   if not SKIP_RENDER AND fAI.Setup.NewAI then

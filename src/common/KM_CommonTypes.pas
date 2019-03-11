@@ -11,7 +11,7 @@ type
   TBooleanArray = array of Boolean;
   TBoolean2Array = array of array of Boolean;
   TKMByteArray = array of Byte;
-  TKMByte2Array = array of array of Byte;
+  TKMByte2Array = array of TKMByteArray;
   TKMByteSetArray = array of TKMByteSet;
   PKMByte2Array = ^TKMByte2Array;
   TKMWordArray = array of Word;

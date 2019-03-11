@@ -356,8 +356,8 @@ begin
   for I := 0 to DefLines.Count - 1 do
     with DefLines.Lines[I] do
     begin
-      Point1 := gAIFields.NavMesh.Nodes[ DefLines.Lines[I].Nodes[0] ].Loc;
-      Point2 := gAIFields.NavMesh.Nodes[ DefLines.Lines[I].Nodes[1] ].Loc;
+      Point1 := gAIFields.NavMesh.Nodes[ DefLines.Lines[I].Nodes[0] ];
+      Point2 := gAIFields.NavMesh.Nodes[ DefLines.Lines[I].Nodes[1] ];
       PL1 := gAIFields.Influences.GetBestAllianceOwner(fOwner, Point1, at_Ally);
       PL2 := gAIFields.Influences.GetBestAllianceOwner(fOwner, Point2, at_Ally);
       if (PL1 <> fOwner) AND (PL2 <> fOwner) AND (PL1 <> PLAYER_NONE) AND (PL2 <> PLAYER_NONE) then

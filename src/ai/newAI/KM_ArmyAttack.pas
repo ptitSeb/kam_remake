@@ -41,7 +41,7 @@ type
 
     function SquadInFight(): Boolean; inline;
     function GetGroupPosition(): TKMPoint; inline;
-    function PlanPath(var aActualPosition, aTargetPosition: TKMPoint; aOrderAttack: Boolean = False; aOrderDestroy: Boolean = False): Boolean;
+    function PlanPath(aTick: Cardinal; var aActualPosition, aTargetPosition: TKMPoint; aOrderAttack: Boolean = False; aOrderDestroy: Boolean = False): Boolean;
 
     procedure SetTargetHouse(aHouse: TKMHouse);
     procedure SetTargetUnit(aUnit: TKMUnit);
@@ -87,11 +87,9 @@ type
     function GetPosition(var aSQRRadius: Single): TKMPoint; overload;
     function GetTargetPosition(): TKMPoint;
     function OrderToAttack(aActualPosition: TKMPoint; UA: TKMUnitArray; UGA: TKMUnitGroupArray; HA: TKMHouseArray): Boolean;
-    function OrderMove(aActualPosition: TKMPoint): Boolean;
+    function OrderMove(aTick: Cardinal; aActualPosition: TKMPoint): Boolean;
   public
-
     DEBUG_UA_POINTS, DEBUG_UGA_POINTS: TKMPointArray;
-
 
     constructor Create(aOwner: TKMHandIndex; aCompanyMode: TKMCompanyMode);
     constructor Load(LoadStream: TKMemoryStream);
@@ -141,7 +139,6 @@ type
     procedure AfterMissionInit();
     procedure UpdateState(aTick: Cardinal);
     procedure OwnerUpdate(aPlayer: TKMHandIndex);
-    function FindBestTarget(var TargetOwner: TKMHandIndex; var aTargetPoint: TKMPoint; aForceToAttack: Boolean = False): Boolean;
     procedure CreateCompany(aTargetPoint: TKMPoint; aGroups: TKMUnitGroupArray; aCompanyMode: TKMCompanyMode = cm_Attack);
     function IsGroupInAction(aGroup: TKMUnitGroup): Boolean;
 
@@ -253,6 +250,8 @@ begin
 end;
 procedure TAISquad.SetTargetHouse(aHouse: TKMHouse);
 begin
+  if (aHouse <> nil) then
+    SetTargetUnit(nil); // House have lower priority so if there is request for attacking house unit must be nil
   if (fTargetHouse = aHouse) then
     Exit;
   fTargetChanged := True;
@@ -278,8 +277,7 @@ end;
 // Update state of squad (group orders)
 procedure TAISquad.UpdateState(aTick: Cardinal);
 const
-  RANGE_AIM_DELAY = 80;
-  HOUSE_AIM_DELAY = 100;
+  AIM_DELAY = 300;
 var
   ActPos, FinPos: TKMPoint;
 begin
@@ -299,11 +297,12 @@ begin
   if (fTargetUnit <> nil) then
   begin
     FinPos := fTargetUnit.GetPosition;
-    if PlanPath(ActPos, FinPos, True, False) then
+    if PlanPath(aTick, ActPos, FinPos, True, False) then
       Group.OrderWalk(FinPos, True, wtokAISquad, FinalPosition.Dir)
-    else if (fGroup.GroupType <> gt_Ranged) OR (fTargetChanged AND (fAttackTimeLimit < aTick)) then
+    else if (fGroup.GroupType <> gt_Ranged) OR fTargetChanged OR (fAttackTimeLimit < aTick) then
+    //else if (fGroup.GroupType <> gt_Ranged) OR (fTargetChanged AND (fAttackTimeLimit < aTick)) then
     begin
-      fAttackTimeLimit := aTick + RANGE_AIM_DELAY;
+      fAttackTimeLimit := aTick + AIM_DELAY;
       fTargetChanged := False;
       Group.OrderAttackUnit(fTargetUnit, True);
     end;
@@ -312,11 +311,11 @@ begin
   else if (fTargetHouse <> nil) then
   begin
     FinPos := fTargetHouse.GetPosition;
-    if PlanPath(ActPos, FinPos, False, True) then
+    if PlanPath(aTick, ActPos, FinPos, False, True) then
       Group.OrderWalk(FinPos, True, wtokAISquad, FinalPosition.Dir)
     else if fTargetChanged OR (fAttackTimeLimit < aTick) then
     begin
-      fAttackTimeLimit := aTick + HOUSE_AIM_DELAY;
+      fAttackTimeLimit := aTick + AIM_DELAY;
       fTargetChanged := False;
       Group.OrderAttackHouse(fTargetHouse, True);
     end;
@@ -325,7 +324,7 @@ begin
   else
   begin
     FinPos := FinalPosition.Loc;
-    if PlanPath(ActPos, FinPos, False, False) then
+    if PlanPath(aTick, ActPos, FinPos, False, False) then
       Group.OrderWalk(FinPos, True, wtokAISquad, FinalPosition.Dir)
     else if not KMSamePoint(Group.Position, FinalPosition.Loc) then // Dont repeat order and let archers fire
       Group.OrderWalk(FinalPosition.Loc, True, wtokAISquad, FinalPosition.Dir);
@@ -333,7 +332,7 @@ begin
 end;
 
 
-function TAISquad.PlanPath(var aActualPosition, aTargetPosition: TKMPoint; aOrderAttack: Boolean = False; aOrderDestroy: Boolean = False): Boolean;
+function TAISquad.PlanPath(aTick: Cardinal; var aActualPosition, aTargetPosition: TKMPoint; aOrderAttack: Boolean = False; aOrderDestroy: Boolean = False): Boolean;
 const
   SQR_POSITION_REACHED_TOLERANCE = 3*3; // Tolerance between reached point and actual position it is useful in traffic problems
   SQR_TARGET_REACHED_TOLERANCE = 3*3; // Target unit should have lower tolerance because of group type pathfinding (cav will avoid spears etc)
@@ -350,7 +349,7 @@ begin
   fOnPlace := False;
   SQRDist := KMDistanceSqr(aActualPosition, aTargetPosition);
   // Time limit (time limit MUST be always set by higher rank (platoon))
-  if (not (aOrderAttack OR aOrderDestroy) AND (fTimeLimit < gGame.GameTickCount)) // Time limit is set to 0 in case that unit attack something
+  if (not (aOrderAttack OR aOrderDestroy) AND (fTimeLimit < aTick)) // Time limit is set to 0 in case that unit attack something
     // Target position is reached
     OR (KMDistanceSqr(aActualPosition, aTargetPosition) < SQR_POSITION_REACHED_TOLERANCE)
     // Target unit is close
@@ -618,7 +617,7 @@ begin
     fState := cs_Walking;
     if InPosition then
     begin
-      if not OrderMove(PathPosition) then
+      if not OrderMove(aTick, PathPosition) then
         fState := cs_Idle;
     end;
   end
@@ -630,8 +629,13 @@ end;
 
 
 function TAICompany.OrderToAttack(aActualPosition: TKMPoint; UA: TKMUnitArray; UGA: TKMUnitGroupArray; HA: TKMHouseArray): Boolean;
+type
+  TCompanyInfo = record
+    GTCnt: array[TKMGroupType] of Word; // Count of soldiers sorted by GroupType
+  end;
 var
   AvailableSquads: TKMSquadsArray;
+  CompanyInfo: TCompanyInfo;
   //fTargetU: TKMTargetSelection;
 
   procedure FindAvailableSquads();
@@ -640,6 +644,7 @@ var
     GT: TKMGroupType;
     Squad: TAISquad;
   begin
+    FillChar(CompanyInfo, SizeOf(CompanyInfo), #0);
     for GT := Low(TKMGroupType) to High(TKMGroupType) do
     begin
       AvailableSquads[GT].Count := 0;
@@ -649,8 +654,8 @@ var
       for I := 0 to fSquads[GT].Count - 1 do
       begin
         Squad := fSquads[GT].Items[I];
-        if not Squad.InFight
-          AND ((fCompanyMode <> cm_Destruction) OR (Squad.TargetHouse = nil)) then
+        Inc(CompanyInfo.GTCnt[GT], Squad.Group.Count);
+        if not Squad.InFight then
         begin
           // Make sure that unit will not hunt target over the whole map and better stay inside company
           if (GT <> gt_Ranged) then // ranged units are fixed in Squad class (set / reset target cause that they dont shoot)
@@ -659,7 +664,7 @@ var
             //Squad.TargetHouse := nil; // This cause same problem like with archers
           end;
           AvailableSquads[GT].Squads[ AvailableSquads[GT].Count ] := Squad;
-          AvailableSquads[GT].Count := AvailableSquads[GT].Count + 1;
+          Inc(AvailableSquads[GT].Count);
         end;
       end;
   end;
@@ -870,10 +875,12 @@ var
   function OrderAttackHouse(): Boolean;
   const
     INIT_THREAT = 1000000;
-    SQR_CLOSE_COMBAT_DISTANCE_LIMIT = 12*12;
+    LIMIT_RANGED_DESTROY_ALL_HOUSES = 6; // Archers will start to shoot at other houses if there is not enought close combat units in company
+    SQR_CLOSE_COMBAT_DISTANCE_LIMIT = 12*12; // Order to attack house starts at this distance (close combat groups; watchtowers have exception)
     MAX_SOLDIERS_VS_HOUSE = 12;
-    SQR_ATTACK_WATCHTOWER_WITH_CLOSE_COMBAT_DIST = 5*5;
-    SQR_MAX_CLOSE_COMBAT_VS_UNIT_DIST = 3*3;
+    MAX_ARCHERS_VS_TOWER = 9;
+    SQR_ATTACK_WATCHTOWER_WITH_CLOSE_COMBAT_DIST = 5*5; // Attack watchtower with close combat units
+    SQR_MAX_CLOSE_COMBAT_VS_UNIT_DIST = 3*3; // Kill citizens in this radius around house (workers tries to repair house)
   var
     Output: Boolean;
     TargetIdx: Word;
@@ -885,8 +892,7 @@ var
   begin
     Output := False;
     SetLength(GroupAttackCnt, Length(HA));
-    for I := 0 to Length(HA) - 1 do
-      GroupAttackCnt[I] := 0;
+    FillChar(GroupAttackCnt[0], SizeOf(GroupAttackCnt[0]) * Length(GroupAttackCnt), #0);
 
     // Target watchtowers with archers
     GT := gt_Ranged;
@@ -896,7 +902,7 @@ var
       BestDist := INIT_THREAT;
       for K := 0 to Length(HA) - 1 do
         if (HA[K].HouseType = htWatchTower)
-          AND (GroupAttackCnt[K] < MAX_SOLDIERS_VS_HOUSE)
+          AND (GroupAttackCnt[K] < MAX_ARCHERS_VS_TOWER)
           AND (HA[K].CheckResIn(wt_Stone) > 1)
           AND HA[K].HasOwner then // Ignore towers without stone and without recruit inside
         begin
@@ -909,7 +915,7 @@ var
         end;
       if (BestDist <> INIT_THREAT) then
       begin
-        GroupAttackCnt[TargetIdx] := GroupAttackCnt[TargetIdx] + AvailableSquads[GT].Squads[I].Group.Count;
+        Inc(GroupAttackCnt[TargetIdx], AvailableSquads[GT].Squads[I].Group.Count);
         // Find and kill workers who want to repair house
         U := gAIFields.Eye.GetClosestUnitAroundHouse(HA[TargetIdx].HouseType, HA[TargetIdx].GetPosition, AvailableSquads[GT].Squads[I].Position);
         if (U <> nil) then
@@ -925,8 +931,10 @@ var
     // Target everything else with close combat units
     for GT := Low(TKMGroupType) to High(TKMGroupType) do
     begin
-      if (GT = gt_Ranged) then
-        continue;
+      if (GT = gt_Ranged) then // Ignore ranged units if we have enought close combat support (avoid friendly fire)
+        with CompanyInfo do
+          if (GTCnt[gt_Melee] + GTCnt[gt_AntiHorse] + GTCnt[gt_Mounted] > LIMIT_RANGED_DESTROY_ALL_HOUSES) then
+            continue;
       for I := AvailableSquads[GT].Count - 1 downto 0 do
       begin
         BestDist := INIT_THREAT;
@@ -995,7 +1003,7 @@ begin
 end;
 
 
-function TAICompany.OrderMove(aActualPosition: TKMPoint): Boolean;
+function TAICompany.OrderMove(aTick: Cardinal; aActualPosition: TKMPoint): Boolean;
 
   function GetInitPolygons(aCnt: Integer; var aPointPath: TKMPointArray): TKMWordArray;
   const
@@ -1034,7 +1042,7 @@ function TAICompany.OrderMove(aActualPosition: TKMPoint): Boolean;
 
   procedure SetOrders(aCnt: Integer; var aPositions: TKMPointArray);
   const
-    TIME_PER_A_TILE = 8; // Max ticks per a tile
+    TIME_PER_A_TILE = 7; // Max ticks per a tile
     INIT_DIST = 1000;
   var
     I, K, Dist, ClosestDist, ClosestIdx: Integer;
@@ -1082,7 +1090,7 @@ function TAICompany.OrderMove(aActualPosition: TKMPoint): Boolean;
         if (ClosestDist = INIT_DIST) then
           break;
         Squads[ClosestIdx].FinalPosition := KMPointDir(Position, Dir);
-        Squads[ClosestIdx].TimeLimit := gGame.GameTickCount + KMDistanceAbs(Position, Squads[ClosestIdx].Position) * TIME_PER_A_TILE;
+        Squads[ClosestIdx].TimeLimit := aTick + KMDistanceAbs(Position, Squads[ClosestIdx].Position) * TIME_PER_A_TILE;
         AvailableSquads[ClosestIdx] := False;
       end;
     finally
@@ -1346,8 +1354,8 @@ begin
   begin
     Company := fCompanies.Items[I];
     Company.UpdateState(aTick);
-    if (  (Company.SquadCnt = 0) OR (Company.State = cs_Idle)  )
-      AND (  (Company.CompanyMode in [cm_Attack, cm_Destruction]) OR not DetectEnemyPresence(Company.TargetPoint)  )  then
+    if (  (Company.SquadCnt = 0) OR (Company.State = cs_Idle)  ) then
+      //AND (  (Company.CompanyMode in [cm_Attack, cm_Destruction]) OR not DetectEnemyPresence(Company.TargetPoint)  )  then
       fCompanies.Remove( Company );
   end;
 end;
@@ -1387,67 +1395,7 @@ begin
 end;
 
 
-// Find best target -> to secure that AI will be as universal as possible find only point in map and company will destroy everything around automatically
-function TKMArmyAttack.FindBestTarget(var TargetOwner: TKMHandIndex; var aTargetPoint: TKMPoint; aForceToAttack: Boolean = False): Boolean;
-const
-  DISTANCE_COEF = 0.75; // If second enemy is twice as far away decrease chance by 3/8
-  MIN_COMPARSION = 0.2; // 20% advantage for attacker
-var
-  I, MinDist: Integer;
-  Comparison, BestComparison: Single;
-  Group: TKMUnitGroup;
-  CenterPoints: TKMPointArray;
-  EnemyStats: TKMEnemyStatisticsArray;
-begin
-  Result := False;
-  aTargetPoint := KMPOINT_ZERO;
-
-  // Find center point of city / army (where we should start scan - init point / center screen is useless for this)
-  CenterPoints := gAIFields.Eye.GetCityCenterPoints(True);
-  if (Length(CenterPoints) = 0) then // No important houses were found -> try find soldier
-  begin
-    Group := gHands[fOwner].UnitGroups.Groups[ KaMRandom(gHands[fOwner].UnitGroups.Count, 'TKMArmyAttack.FindBestTarget') ];
-    if (Group <> nil) then
-    begin
-      SetLength(CenterPoints, 1);
-      CenterPoints[0] := Group.Position;
-    end
-    else
-      Exit;
-  end;
-
-  // Try find enemies by influence area
-  if not gAIFields.Influences.InfluenceSearch.FindClosestEnemies(fOwner, CenterPoints, True) then // Try find hostile house
-    if not gAIFields.Influences.InfluenceSearch.FindClosestEnemies(fOwner, CenterPoints, False) then // Try find hostile unit
-      Exit;
-  EnemyStats := gAIFields.Influences.InfluenceSearch.EnemiesStats;
-
-  // Calculate strength of alliance, find best comparison - value in interval <-1,1>, positive value = advantage, negative = disadvantage
-  BestComparison := -1;
-  if (Length(EnemyStats) > 0) then
-  begin
-    // Find closest enemy
-    MinDist := High(Integer);
-    for I := 0 to Length(EnemyStats) - 1 do
-      if (MinDist > EnemyStats[I].Distance) then
-        MinDist := EnemyStats[I].Distance;
-
-    for I := 0 to Length(EnemyStats) - 1 do
-    begin
-      Comparison := gAIFields.Eye.ArmyEvaluation.CompareAllianceStrength(fOwner, EnemyStats[I].Player) - (EnemyStats[I].Distance / Max(1,MinDist) - 1) * DISTANCE_COEF;
-      if (Comparison > BestComparison) then
-      begin
-        BestComparison := Comparison;
-        TargetOwner := EnemyStats[I].Player;
-        aTargetPoint := EnemyStats[I].ClosestPoint;
-      end;
-    end;
-  end;
-
-  Result := (Length(EnemyStats) > 0) AND (aForceToAttack OR (BestComparison > MIN_COMPARSION));
-end;
-
-
+    Group := gHands[fOwner].UnitGroups.Groups[ KaMRandom(gHands[fOwner].UnitGroups.Count) ];
 procedure TKMArmyAttack.CreateCompany(aTargetPoint: TKMPoint; aGroups: TKMUnitGroupArray; aCompanyMode: TKMCompanyMode = cm_Attack);
   procedure PrepareCompany(var aCompany: TAICompany; aTargetHouse: TKMHouse; aTargetUnit: TKMUnit);
   var

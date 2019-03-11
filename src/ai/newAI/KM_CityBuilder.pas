@@ -14,13 +14,13 @@ var
   GA_BUILDER_BuildHouse_RTPMaxWork      : Single = 10;
   GA_BUILDER_CreateShortcuts_MaxWork    : Single = 9.321095646;
   GA_BUILDER_ChHTB_FractionCoef         : Single = 9.673275352;
-  GA_BUILDER_ChHTB_TrunkFactor          : Single = 5.370502472;
-  GA_BUILDER_ChHTB_TrunkBalance         : Single = 9.370810389;
+  GA_BUILDER_ChHTB_TrunkFactor          : Single = 17.256;
+  GA_BUILDER_ChHTB_TrunkBalance         : Single = 1;
   GA_BUILDER_ChHTB_AllWorkerCoef        : Single = 9.645618439;
   GA_BUILDER_ChHTB_FreeWorkerCoef       : Single = 1;
   GA_BUILDER_TRUNK_SHORTAGE             : Single = 1;
   GA_BUILDER_STONE_SHORTAGE             : Single = 6.846969;
-  GA_BUILDER_WOOD_SHORTAGE              : Single = 10.05567646;
+  GA_BUILDER_WOOD_SHORTAGE              : Single = 4.757;
   GA_BUILDER_GOLD_SHORTAGE              : Single = 35.64543295;
 
 
@@ -55,6 +55,7 @@ type
     procedure UnlockPointOfNode(aPoint: TKMPoint; aCheckHousePlan: Boolean = False);
     procedure UnlockNode(var aNode: TBuildNode; aCheckHousePlan: Boolean = False);
 
+    procedure CheckBasicMaterials(var aFreeWorkersCnt, aMaxPlans, aMaxPlace: Integer; var aTrunkBalance: Single; aTick: Cardinal);
     procedure CreateShortcuts();
   public
     constructor Create(aPlayer: TKMHandIndex; aPredictor: TKMCityPredictor);
@@ -65,8 +66,12 @@ type
 
     property Planner: TKMCityPlanner read fPlanner;
     property WorkersPos: TKMPointArray read fWorkersPos;
+    property StoneShortage: Boolean read fStoneShortage;
+    property WoodShortage: Boolean read fWoodShortage;
+    property TrunkShortage: Boolean read fTrunkShortage;
+    property GoldShortage: Boolean read fGoldShortage;
 
-    procedure AfterMissionInit(out aGoldMineCnt, aIronMineCnt, aFieldCnt, aBuildCnt: Integer);
+    procedure AfterMissionInit();
     procedure OwnerUpdate(aPlayer: TKMHandIndex);
 
     procedure UpdateState(aTick: Cardinal; out aFreeWorkersCnt: Integer);
@@ -189,7 +194,7 @@ begin
 end;
 
 
-procedure TKMCityBuilder.AfterMissionInit(out aGoldMineCnt, aIronMineCnt, aFieldCnt, aBuildCnt: Integer);
+procedure TKMCityBuilder.AfterMissionInit();
 var
   I: Integer;
 begin
@@ -211,11 +216,15 @@ end;
 
 
 procedure TKMCityBuilder.UpdateState(aTick: Cardinal; out aFreeWorkersCnt: Integer);
+const
+  CHECK_STONE_RESERVES = 3 * 60 * MAX_HANDS; // Every 3 min check stone reserves
 begin
   if (aTick mod MAX_HANDS = fOwner) then
   begin
     fPlanner.UpdateState(aTick); // Planner must be updated as first to secure that completed houses are actualized
     UpdateBuildNodes(aFreeWorkersCnt);
+    if (aTick mod CHECK_STONE_RESERVES = fOwner) then // First update stone reserves
+      Planner.CheckStoneReserves();
   end;
 end;
 
@@ -844,6 +853,68 @@ begin
 end;
 
 
+procedure TKMCityBuilder.CheckBasicMaterials(var aFreeWorkersCnt, aMaxPlans, aMaxPlace: Integer; var aTrunkBalance: Single; aTick: Cardinal);
+var
+  I, RequiredStones, RequiredWood, WoodReserves, Wood, Trunk: Integer;
+  H: TKMHouse;
+  WareBalance: TWareBalanceArray;
+begin
+  fStoneShortage := False;
+  fTrunkShortage := False;
+  fWoodShortage := False;
+  fGoldShortage := False;
+  WareBalance := fPredictor.WareBalance;
+
+  // Analyze basic force stats (max possible plans, construction ware, gold)
+  aMaxPlans := Ceil(aFreeWorkersCnt / GA_BUILDER_ChHTB_FreeWorkerCoef);
+  // Use "rapid construction" in case that we have resources
+  if   (fPredictor.WareBalance[wt_Stone].Exhaustion > 60) then // Some stone mines are too far so AI must slow down with expansion
+    //AND (fPredictor.WareBalance[wt_Wood].Exhaustion > 60)
+    //AND (fPredictor.WareBalance[wt_Gold].Exhaustion > 60) then
+    aMaxPlans := Max(aMaxPlans, Ceil(gHands[fOwner].Stats.GetUnitQty(ut_Worker) / GA_BUILDER_ChHTB_AllWorkerCoef) - fPlanner.ConstructedHouses);
+
+  // Quarries have minimal delay + stones use only workers (towers after peace time) -> exhaustion for wt_Stone is OK
+  if (WareBalance[wt_Stone].Exhaustion < GA_BUILDER_STONE_SHORTAGE) then
+    fStoneShortage := True;
+
+  // Secure wood production: only process trunk -> wood => minimal delay, exhaustion is OK
+  if (WareBalance[wt_Wood].Exhaustion < GA_BUILDER_WOOD_SHORTAGE) then
+    fWoodShortage := True;
+
+  // Make sure that gold will be produced ASAP -> minimal delay, exhaustion is OK
+  if (WareBalance[wt_Gold].Exhaustion < GA_BUILDER_GOLD_SHORTAGE) then
+    fGoldShortage := True;
+
+  // Woodcutters have huge delay (8 min) + trunk is used only to produce wood -> decide shortage based on actual consumption and reserves
+  Trunk := gHands[fOwner].Stats.GetWareBalance(wt_Trunk);
+  Wood := gHands[fOwner].Stats.GetWareBalance(wt_Wood);
+  WoodReserves := Trunk * 2 + Wood;
+  aTrunkBalance := WoodReserves / (2 * Max(0.1, WareBalance[wt_Trunk].ActualConsumption));
+  if (aTrunkBalance < GA_BUILDER_TRUNK_SHORTAGE) then
+    fTrunkShortage := True;
+
+  // Compute building materials
+  RequiredStones := gHands[fOwner].BuildList.HousePlanList.GetPlansStoneDemands();
+  RequiredWood := gHands[fOwner].BuildList.HousePlanList.GetPlansWoodDemands();
+  for I := 0 to gHands[fOwner].Houses.Count - 1 do
+  begin
+    H := gHands[fOwner].Houses[I];
+    if (H <> nil) AND not H.IsDestroyed AND not H.IsComplete then
+    begin
+      RequiredStones := RequiredStones + gRes.Houses[H.HouseType].StoneCost - H.GetBuildStoneDelivered;
+      RequiredWood := RequiredWood + gRes.Houses[H.HouseType].WoodCost - H.GetBuildWoodDelivered;
+    end;
+  end;
+  //fStoneShortage := fStoneShortage OR (gHands[fOwner].Stats.GetWareBalance(wt_Stone) < RequiredStones);
+  //fTrunkShortage := fTrunkShortage OR (gHands[fOwner].Stats.GetWareBalance(wt_Wood) < RequiredWood);
+  fTrunkShortage := fTrunkShortage OR (WoodReserves < RequiredWood);
+  aMaxPlace := Round((Wood // Available wood
+                     + Min(Trunk * 2 , gHands[fOwner].Stats.GetHouseQty(htSawmill) * 4) // Trunk which can be turned into wood while the house is digged
+                     - RequiredWood) / 3 // Consideration of required wood per a plan (approx 3)
+                   );
+end;
+
+
 procedure TKMCityBuilder.ChooseHousesToBuild(aFreeWorkersCnt: Integer; aTick: Cardinal);
 type
   TSetOfWare = set of TKMWareType;
@@ -1058,7 +1129,7 @@ var
     );
     STONE_SHORTAGE_IDX = 2;
     TRUNK_SHORTAGE_IDX = 3;
-    WOOD_SHORTAGE_IDX = 4;
+    WOOD_SHORTAGE_IDX = 7;
     GOLD_SHORTAGE_IDX = 7;
     FULL_SET = 28;
   var
@@ -1075,7 +1146,7 @@ var
     begin
       MaxIdx := WOOD_SHORTAGE_IDX;
       MinIdx := TRUNK_SHORTAGE_IDX;
-      if (gHands[fOwner].Stats.GetHouseTotal(htWoodcutters) > 0) then
+      if (fPlanner.PlannedHouses[htSawmill].Completed > 0) then
         MinIdx := WOOD_SHORTAGE_IDX;
     end
     else if fTrunkShortage then
@@ -1136,62 +1207,17 @@ const
   BUILD_TOWER_DELAY = 17 * 60 * 10; // 17 minutes before end of peace
   MINIMAL_TOWER_DELAY = 50 * 60 * 10; // Towers will not be build before 50 minute
 var
-  I, RequiredStones, RequiredWood, WoodReserves, Wood, Trunk: Integer;
   TrunkBalance: Single;
   HT: TKMHouseType;
-  H: TKMHouse;
 begin
-  fStoneShortage := False;
-  fTrunkShortage := False;
-  fWoodShortage := False;
-  fGoldShortage := False;
+  // Get shortage info
+  CheckBasicMaterials(aFreeWorkersCnt, MaxPlans,MaxPlace, TrunkBalance, aTick);
+
   RequiredHouses := fPredictor.RequiredHouses;
   WareBalance := fPredictor.WareBalance;
 
-  // Analyze basic force stats (max possible plans, construction ware, gold)
-  MaxPlans := Ceil(gHands[fOwner].Stats.GetUnitQty(ut_Worker) / GA_BUILDER_ChHTB_AllWorkerCoef) - fPlanner.ConstructedHouses;
-  MaxPlans := Max(MaxPlans, Ceil(aFreeWorkersCnt / GA_BUILDER_ChHTB_FreeWorkerCoef));
-
-  // Quarries have minimal delay + stones use only workers (towers after peace time) -> exhaustion for wt_Stone is OK
-  if (WareBalance[wt_Stone].Exhaustion < GA_BUILDER_STONE_SHORTAGE) then
-    fStoneShortage := True;
-
-  // Secure wood production: only process trunk -> wood => minimal delay, exhaustion is OK
-  if (WareBalance[wt_Wood].Exhaustion < GA_BUILDER_WOOD_SHORTAGE) then
-    fWoodShortage := True;
-
-  // Make sure that gold will be produced ASAP -> minimal delay, exhaustion is OK
-  if (WareBalance[wt_Gold].Exhaustion < GA_BUILDER_GOLD_SHORTAGE) then
-    fGoldShortage := True;
-
-  // Woodcutters have huge delay (8 min) + trunk is used only to produce wood -> decide shortage based on actual consumption and reserves
-  Trunk := gHands[fOwner].Stats.GetWareBalance(wt_Trunk);
-  Wood := gHands[fOwner].Stats.GetWareBalance(wt_Wood);
-  WoodReserves := Trunk * 2 + Wood;
-  TrunkBalance := WoodReserves / (2 * Max(0.1, WareBalance[wt_Trunk].ActualConsumption));
-  if (TrunkBalance < GA_BUILDER_TRUNK_SHORTAGE) then
-    fTrunkShortage := True;
-
-  // Compute building materials
-  RequiredStones := gHands[fOwner].BuildList.HousePlanList.GetPlansStoneDemands();
-  RequiredWood := gHands[fOwner].BuildList.HousePlanList.GetPlansWoodDemands();
-  for I := 0 to gHands[fOwner].Houses.Count - 1 do
-  begin
-    H := gHands[fOwner].Houses[I];
-    if (H <> nil) AND not H.IsDestroyed AND not H.IsComplete then
-    begin
-      RequiredStones := RequiredStones + gRes.Houses[H.HouseType].StoneCost - H.GetBuildStoneDelivered;
-      RequiredWood := RequiredWood + gRes.Houses[H.HouseType].WoodCost - H.GetBuildWoodDelivered;
-    end;
-  end;
-  //fStoneShortage := fStoneShortage OR (gHands[fOwner].Stats.GetWareBalance(wt_Stone) < RequiredStones);
-  //fTrunkShortage := fTrunkShortage OR (gHands[fOwner].Stats.GetWareBalance(wt_Wood) < RequiredWood);
-  fTrunkShortage := fTrunkShortage OR (WoodReserves < RequiredWood);
-  MaxPlace := Round((Wood // Available wood
-                     + Min(Trunk * 2 , gHands[fOwner].Stats.GetHouseQty(htSawmill) * 4) // Trunk which can be turned into wood while the house is digged
-                     - RequiredWood) / 3 // Consideration of required wood per a plan (approx 3)
-                   );
-  RequiredHouses[htWineyard] := RequiredHouses[htWineyard] * Byte(fTrunkShortage OR (MaxPlace < 3)); // Dont try to place wine we are out of wood
+  // Dont try to place wine we are out of wood
+  RequiredHouses[htWineyard] := RequiredHouses[htWineyard] * Byte(not(fTrunkShortage OR (MaxPlace < 3)));
 
   // Find place for chop-only woodcutters when we start to be out of wood
   if ((GA_BUILDER_ChHTB_TrunkBalance - TrunkBalance) / GA_BUILDER_ChHTB_TrunkFactor - GetChopOnlyCnt() > 0) then
@@ -1249,7 +1275,7 @@ end;
 procedure TKMCityBuilder.CreateShortcuts();
 const
   MAX_SHORTCUTS_PER_HOUSE_TYPE = 2;
-  MAX_DISTANCE_TO_ALL_HOUSES = 8;
+  MAX_DISTANCE_TO_ALL_HOUSES = 10;
   MAX_WORKERS_FOR_NODE = 4;
   HOUSE_CONNECTION: array[HOUSE_MIN..HOUSE_MAX] of set of TKMHouseType = (
     {ht_ArmorSmithy}    [ htIronSmithy,    htCoalMine,     htBarracks     ],
@@ -1361,7 +1387,8 @@ begin
   if   (fPredictor.WareBalance[wt_Stone].Exhaustion < 60)
     //OR (fPredictor.WareBalance[wt_Wood].Exhaustion < 60)
     OR (fPredictor.WareBalance[wt_Gold].Exhaustion < 60)
-    OR (gHands[fOwner].Stats.GetHouseQty(htSchool) = 0) then
+    OR (gHands[fOwner].Stats.GetHouseQty(htSchool) = 0)
+    OR (gHands[fOwner].Stats.GetUnitQty(ut_Worker) = 0) then
     Exit;
 
   // Check if there is free build node
