@@ -2217,21 +2217,6 @@ begin
                       begin
                         IncGameTick;
 
-                        //Only increase LastTick, since we could load replay earlier at earlier state
-                        fSavedReplays.LastTick := Max(fSavedReplays.LastTick, fGameTick);
-
-                        //Save replay to memory (to be able to load it later)
-                        if gGameApp.GameSettings.ReplayAutosave
-                          and (
-                            (fGameTick = 1)//First tick
-                            or (fGameTick = (fGameOptions.Peacetime*60*10)) //At PT end
-                            or ((fGameTick mod gGameApp.GameSettings.ReplayAutosaveFrequency) = 0)) then
-                        begin
-                          SaveReplayToMemory;
-                          if fGamePlayInterface <> nil then
-                            fGamePlayInterface.ReplaySaved;
-                        end;
-
                         fScripting.UpdateState;
                         UpdatePeacetime; //Send warning messages about peacetime if required (peacetime sound should still be played in replays)
                         gTerrain.UpdateState;
@@ -2244,6 +2229,23 @@ begin
 
                         //Issue stored commands
                         fGameInputProcess.ReplayTimer(fGameTick);
+
+
+                        //Only increase LastTick, since we could load replay earlier at earlier state
+                        fSavedReplays.LastTick := Max(fSavedReplays.LastTick, fGameTick);
+
+                        //Save replay to memory (to be able to load it later)
+                        //Make replay save only after everything is updated (UpdateState)
+                        if gGameApp.GameSettings.ReplayAutosave
+                          and (
+                            (fGameTick = 1)//First tick
+                            or (fGameTick = (fGameOptions.Peacetime*60*10)) //At PT end
+                            or ((fGameTick mod gGameApp.GameSettings.ReplayAutosaveFrequency) = 0)) then
+                        begin
+                          SaveReplayToMemory;
+                          if fGamePlayInterface <> nil then
+                            fGamePlayInterface.ReplaySaved;
+                        end;
 
                         if gGame = nil then
                           Exit; //Quit if the game was stopped by a replay mismatch
