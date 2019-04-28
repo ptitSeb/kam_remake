@@ -1168,7 +1168,15 @@ begin
 
   with RMGSettings.Locs.Resource do
   begin
-    ResSettings := TIntegerArray.Create(Iron, Gold, Stone, Iron, Gold);
+    //ResSettings := TIntegerArray.Create(Iron, Gold, Stone, Iron, Gold);
+    SetLength(ResSettings, 5);
+    ResSettings[0] := Iron;
+    ResSettings[1] := Gold;
+    ResSettings[2] := Stone;
+    ResSettings[3] := Iron;
+    ResSettings[4] := Gold;
+
+
     for I := Low(ResSettings) to High(ResSettings) do
     begin
       ResAmount[I] := ResSettings[I] * RES_AMOUNT[I];
@@ -2587,7 +2595,13 @@ begin
     // Detect all shapes (merge / split existing shapes if they are / are not connected because could CA changed it)
     for I := 0 to fRes.Count - 1 do
     begin
-      Resources[I].TileCounter := TIntegerArray.Create(0,0,0,0);
+      //Resources[I].TileCounter := TIntegerArray.Create(0,0,0,0);
+      SetLength(Resources[I].TileCounter, 4);
+      Resources[I].TileCounter[0] := 0;
+      Resources[I].TileCounter[1] := 0;
+      Resources[I].TileCounter[2] := 0;
+      Resources[I].TileCounter[3] := 0;
+
       K := Low(Resources[I].Points);
       // Calculate the count of tiles which can be changed to specific resource (it is represented by multiple points from Voronoi which represent multiple shapes)
       MaxLen := Length(Resources[I].Points);

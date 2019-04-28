@@ -8,7 +8,7 @@ uses
   {$IFDEF Unix}
   unix, baseunix, UnixUtil,
   {$ENDIF}
-  {$IFDEF FPC} FileUtil, {$ENDIF}
+  {$IFDEF FPC} FileUtil, LCLIntf, LCLType,{$ENDIF}
   {$IFDEF WDC} IOUtils, {$ENDIF}
 	SysUtils, StrUtils, Classes, Controls,
   KM_Terrain,

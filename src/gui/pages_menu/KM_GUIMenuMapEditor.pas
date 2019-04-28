@@ -445,7 +445,8 @@ begin
         gGameApp.GameSettings.FavouriteMaps.Remove(fMaps[I].CRC);
 
       //Update pic
-      ColumnBox_MapEd.Item[Y].Cells[0].Pic := fMaps[I].FavouriteMapPic;
+      //ColumnBox_MapEd.Item[Y].Cells[0].Pic := fMaps[I].FavouriteMapPic;
+      ColumnBox_MapEd.Rows[Y].Cells[0].Pic := fMaps[I].FavouriteMapPic;
     finally
       fMaps.Unlock;
     end;

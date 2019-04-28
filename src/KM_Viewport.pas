@@ -3,7 +3,8 @@ unit KM_Viewport;
 interface
 uses
   {$IFDEF MSWINDOWS} Windows, {$ENDIF}
-  KM_CommonClasses, KM_Points;
+  LCLType, Controls,
+  KM_CommonClasses, KM_Points, types;
 
 
 type

@@ -72,7 +72,7 @@ uses
 
   procedure KMSwapFloat(var A,B: Single); overload;
   procedure KMSwapFloat(var A,B: Double); overload;
-  procedure KMSwapFloat(var A,B: Extended); overload;
+  //procedure KMSwapFloat(var A,B: Extended); overload;
 
   procedure KMSummArr(aArr1, aArr2: PKMCardinalArray);
   procedure KMSummAndEnlargeArr(aArr1, aArr2: PKMCardinalArray);
@@ -206,11 +206,11 @@ begin
   S:=A; A:=B; B:=S;
 end;
 
-procedure KMSwapFloat(var A,B: Extended);
+{procedure KMSwapFloat(var A,B: Extended);
 var S: Extended;
 begin
   S:=A; A:=B; B:=S;
-end;
+end;}
 
 
 procedure KMSummArr(aArr1, aArr2: PKMCardinalArray);
@@ -999,7 +999,7 @@ begin
   if DirPath = '' then Exit;
 
   if StrIndexOf(DirPath, PathDelim) <> -1 then
-    Result := copy(DirPath, StrLastIndexOf(DirPath, PathDelim) + 2);
+    Result := copy(DirPath, StrLastIndexOf(DirPath, PathDelim) + 2, Length(DirPath));
 end;
 
 

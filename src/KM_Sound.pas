@@ -169,7 +169,7 @@ begin
   if SKIP_SOUND then Exit;
 
   fIsSoundInitialized := InitOpenAL;
-  Set8087CW($133F); //Above OpenAL call messes up FPU settings
+  //Set8087CW($133F); //Above OpenAL call messes up FPU settings
   if not fIsSoundInitialized then begin
     gLog.AddNoTime('OpenAL warning. OpenAL could not be initialized.');
     //MessageDlg works better than Application.MessageBox or others, it stays on top and pauses here until the user clicks ok.
@@ -180,7 +180,7 @@ begin
 
   //Open device
   fALDevice := alcOpenDevice(nil); // this is supposed to select the "preferred device"
-  Set8087CW($133F); //Above OpenAL call messes up FPU settings
+  //Set8087CW($133F); //Above OpenAL call messes up FPU settings
   if fALDevice = nil then begin
     gLog.AddNoTime('OpenAL warning. Device could not be opened.');
     //MessageDlg works better than Application.MessageBox or others, it stays on top and pauses here until the user clicks ok.
@@ -191,7 +191,7 @@ begin
 
   //Create context(s)
   Context := alcCreateContext(fALDevice, nil);
-  Set8087CW($133F); //Above OpenAL call messes up FPU settings
+  //Set8087CW($133F); //Above OpenAL call messes up FPU settings
   if Context = nil then begin
     gLog.AddNoTime('OpenAL warning. Context could not be created.');
     //MessageDlg works better than Application.MessageBox or others, it stays on top and pauses here until the user clicks ok.
@@ -202,7 +202,7 @@ begin
 
   //Set active context
   I := alcMakeContextCurrent(Context);
-  Set8087CW($133F); //Above OpenAL call messes up FPU settings
+  //Set8087CW($133F); //Above OpenAL call messes up FPU settings
   if I > 1 then begin //valid returns are AL_NO_ERROR=0 and AL_TRUE=1
     gLog.AddNoTime('OpenAL warning. Context could not be made current.');
     //MessageDlg works better than Application.MessageBox or others, it stays on top and pauses here until the user clicks ok.

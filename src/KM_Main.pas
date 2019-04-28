@@ -3,8 +3,9 @@ unit KM_Main;
 interface
 uses
   {$IFDEF MSWindows} Windows, {$ENDIF}
+  LCLType, dialogs, controls,
   KM_FormMain, KM_FormLoading, KM_Maps,
-  KM_Settings, KM_Resolutions;
+  KM_Settings, KM_Resolutions, types;
 
 
 type
@@ -308,7 +309,7 @@ begin
 
   if CHECK_8087CW then
     //$1F3F is used to mask out reserved/undefined bits
-    Assert((Get8087CW and $1F3F = $133F), '8087CW is wrong');
+    //Assert((Get8087CW and $1F3F = $133F), '8087CW is wrong');
 
   //if not Form1.Active then exit;
 
@@ -341,7 +342,7 @@ begin
 
   //Some PCs seem to change 8087CW randomly between events like Timers and OnMouse*,
   //so we need to set it right before we do game logic processing
-  Set8087CW($133F);
+  //Set8087CW($133F);
   if gGameApp <> nil then
   begin
     gGameApp.UpdateStateIdle(FrameTime);

@@ -1294,7 +1294,9 @@ type
   private
     fDefaultCaption: UnicodeString;
     fDropWidth: Integer;
+  public
     fList: TKMColumnBox;
+  private
     fListTopIndex: Integer;
     fColumnsToShowWhenListHidden: array of Boolean; //which columns to show, when list is hidden
     procedure UpdateDropPosition; override;
@@ -4367,7 +4369,11 @@ end;
 
 function TKMNumericEdit.IsCharValid(Key: WideChar): Boolean;
 begin
-  Result := SysUtils.CharInSet(Key, ['0'..'9']);
+//  Result := SysUtils.CharInSet(Key, ['0'..'9']);
+  if Key in ['0'..'9'] then
+     Result := true
+  else
+      Result := false;
 end;
 
 

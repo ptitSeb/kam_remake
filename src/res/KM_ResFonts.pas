@@ -591,7 +591,8 @@ begin
       else
         Inc(dx, GetCharWidth(aText[I]));
 
-    if SysUtils.CharInSet(aText[I], [#9,#32,#124]) then
+//    if SysUtils.CharInSet(aText[I], [#9,#32,#124]) then
+    if aText[i] in [#9,#32,#124] then
     begin
       LastWrappable := I;
       AfterWrapClMarkup := LastColorMarkup;

@@ -6,7 +6,6 @@ uses
   {$IFDEF MSWINDOWS AND DEBUG_NavMesh}
     Windows,
   {$ENDIF}
-  System.Diagnostics, System.TimeSpan,
   KM_CommonClasses, KM_CommonTypes, KM_Defaults, KM_Points,
   KromUtils, KM_CommonUtils;
 

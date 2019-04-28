@@ -39,7 +39,7 @@ type
 implementation
 uses
   {$IFDEF MSWindows} Windows, {$ENDIF}
-  {$IFDEF Unix} LCLType, {$ENDIF}
+  {$IFDEF Unix} LCLIntf, LCLType, {$ENDIF}
   KM_Main, KM_ResFonts, KM_ResTexts, KM_GameCursor, KM_RenderUI, KM_ResKeys,
   KM_InterfaceGame, KM_Utils;
 

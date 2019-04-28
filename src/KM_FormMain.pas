@@ -7,7 +7,7 @@ uses
   KM_GameTypes,
   {$IFDEF FPC} LResources, {$ENDIF}
   {$IFDEF MSWindows} ShellAPI, Windows, Messages; {$ENDIF}
-  {$IFDEF Unix} LCLIntf, LCLType; {$ENDIF}
+  {$IFDEF Unix} LCLIntf, LCLType, Types; {$ENDIF}
 
 
 type
@@ -382,7 +382,7 @@ end;
 
 procedure TFormMain.RenderAreaResize(aWidth, aHeight: Integer);
 begin
-  gMain.Resize(aWidth, aHeight, GetWindowParams);
+  gMain.Resize(aWidth, aHeight{$IFDEF MSWindows}, GetWindowParams{$ENDIF});
 end;
 
 
@@ -698,7 +698,7 @@ begin
   RenderArea.Top    := 0;
   RenderArea.Height := ClientHeight;
   RenderArea.Width  := ClientWidth;
-  gMain.Resize(RenderArea.Width, RenderArea.Height, GetWindowParams);
+  gMain.Resize(RenderArea.Width, RenderArea.Height{$IFDEF MSWindows}, GetWindowParams{$ENDIF});
 end;
 
 
@@ -842,7 +842,9 @@ begin
       ClientWidth  := MENU_DESIGN_X;
       ClientHeight := MENU_DESIGN_Y;
       // We've set default window params, so update them
+      {$IFDEF MSWindows}
       gMain.UpdateWindowParams(GetWindowParams);
+      {$ENDIF}
       // Unset NeedResetToDefaults flag
       gMain.Settings.WindowParams.NeedResetToDefaults := False;
     end else begin
@@ -911,7 +913,7 @@ begin
   end;
 end;
 
-
+{$IFDEF MSWindows}
 // Return current window params
 function TFormMain.GetWindowParams: TKMWindowParamsRecord;
   // FindTaskBar returns the Task Bar's position, and fills in
@@ -985,7 +987,7 @@ begin
                   end;
   end;
 end;
-
+{$ENDIF}
 
 {$IFDEF MSWindows}
 procedure TFormMain.WMSysCommand(var Msg: TWMSysCommand);

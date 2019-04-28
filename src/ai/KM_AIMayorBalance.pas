@@ -571,7 +571,12 @@ begin
     begin
       //Let every industry think the extra belongs to it
       ExtraWood := WoodProduction - WoodConsumption;
-      WoodWeapon.WoodTheory := WeaponsPerMin + ExtraWood / Max(1,WEAP_COST);
+      //WoodWeapon.WoodTheory := WeaponsPerMin + ExtraWood / Max(1,WEAP_COST);
+      if WEAP_COST > 1 then
+         WoodWeapon.WoodTheory := WeaponsPerMin + ExtraWood / WEAP_COST
+      else
+          WoodWeapon.WoodTheory := WeaponsPerMin + ExtraWood;
+
       LeatherArmor.WoodTheory := ShieldsPerMin + ExtraWood;
     end
     else
@@ -581,7 +586,11 @@ begin
       if (WoodConsumption > 0) and (WoodProduction > WoodNeed) then
       begin
         DeficitWood := WoodConsumption - WoodProduction;
-        WoodWeapon.WoodTheory := Max(0, WeaponsPerMin - DeficitWood / Max(1,WEAP_COST));
+        //WoodWeapon.WoodTheory := Max(0, WeaponsPerMin - DeficitWood / Max(1,WEAP_COST));
+        if WEAP_COST > 1 then
+           WoodWeapon.WoodTheory := Max(0, WeaponsPerMin - DeficitWood / WEAP_COST)
+        else
+            WoodWeapon.WoodTheory := Max(0, WeaponsPerMin - DeficitWood);
         LeatherArmor.WoodTheory := Max(0, ShieldsPerMin - DeficitWood);
       end
       else
@@ -591,8 +600,16 @@ begin
       end;
     end;
 
-    TrunkConsumption := WoodPerMin / Max(1,WT);
-    TrunkReserve := gHands[fOwner].Stats.GetWareBalance(wtTrunk) / Max(1,TrunkConsumption);
+    //TrunkConsumption := WoodPerMin / Max(1,WT);
+    if WT > 1 then
+       TrunkConsumption := WoodPerMin / WT
+    else
+        TrunkConsumption := WoodPerMin;
+    //TrunkReserve := gHands[fOwner].Stats.GetWareBalance(wtTrunk) / Max(1,TrunkConsumption);
+    if TrunkConsumption > 1 then
+       TrunkReserve := gHands[fOwner].Stats.GetWareBalance(wtTrunk) / TrunkConsumption
+    else
+        TrunkReserve := gHands[fOwner].Stats.GetWareBalance(wtTrunk) / TrunkConsumption;
     TrunkProduction := TrunkPerMin + Max(TrunkReserve - 30, 0);
 
     //Trunk shares
@@ -600,7 +617,11 @@ begin
     begin
       //Let every industry think the extra belongs to it
       ExtraTrunk := TrunkProduction - TrunkConsumption;
-      WoodWeapon.TrunkTheory := WeaponsPerMin + ExtraTrunk * WT / Max(1,WEAP_COST);
+      //WoodWeapon.TrunkTheory := WeaponsPerMin + ExtraTrunk * WT / Max(1,WEAP_COST);
+      if WEAP_COST > 1 then
+         WoodWeapon.TrunkTheory := WeaponsPerMin + ExtraTrunk * WT / WEAP_COST
+      else
+          WoodWeapon.TrunkTheory := WeaponsPerMin + ExtraTrunk * WT;
       LeatherArmor.TrunkTheory := ShieldsPerMin + ExtraTrunk * WT;
     end
     else
@@ -610,7 +631,11 @@ begin
       if TrunkConsumption <> 0 then
       begin
         DeficitTrunk := TrunkConsumption - TrunkProduction;
-        WoodWeapon.TrunkTheory := Max(0, WeaponsPerMin - DeficitTrunk * WT / Max(1,WEAP_COST));
+        //WoodWeapon.TrunkTheory := Max(0, WeaponsPerMin - DeficitTrunk * WT / Max(1,WEAP_COST));
+        if WEAP_COST > 1 then
+           WoodWeapon.TrunkTheory := Max(0, WeaponsPerMin - DeficitTrunk * WT / WEAP_COST)
+        else
+            WoodWeapon.TrunkTheory := Max(0, WeaponsPerMin - DeficitTrunk * WT);
         LeatherArmor.TrunkTheory := Max(0, ShieldsPerMin - DeficitTrunk * WT);
       end
       else
